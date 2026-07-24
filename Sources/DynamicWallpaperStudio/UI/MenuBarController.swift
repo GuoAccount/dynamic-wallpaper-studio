@@ -2,7 +2,7 @@ import AppKit
 import SwiftUI
 import Combine
 
-public final class MenuBarController: NSObject {
+public final class MenuBarController: NSObject, NSWindowDelegate, NSMenuDelegate {
     private var statusItem: NSStatusItem!
     private var dashboardWindow: NSWindow?
     private var cancellables = Set<AnyCancellable>()
@@ -16,10 +16,13 @@ public final class MenuBarController: NSObject {
     private func setupStatusItem() {
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         if let button = statusItem.button {
-            button.image = NSImage(systemSymbolName: "sparkles.tv", accessibilityDescription: "Dynamic Wallpaper")
-            button.action = #selector(statusItemClicked)
-            button.target = self
+            button.image = NSImage(systemSymbolName: "sparkles.tv", accessibilityDescription: "Dynamic Wallpaper Studio")
         }
+        
+        let menu = NSMenu()
+        menu.delegate = self
+        statusItem.menu = menu
+        
         rebuildMenu()
     }
     
@@ -32,13 +35,13 @@ public final class MenuBarController: NSObject {
             .store(in: &cancellables)
     }
     
-    @objc private func statusItemClicked() {
+    public func menuWillOpen(_ menu: NSMenu) {
         rebuildMenu()
-        statusItem.button?.performClick(nil)
     }
     
     public func rebuildMenu() {
-        let menu = NSMenu()
+        guard let menu = statusItem.menu else { return }
+        menu.removeAllItems()
         
         let title = WallpaperManager.shared.currentWallpaper.title
         let energyState = EnergySaverManager.shared.isPaused ? "💤 \(EnergySaverManager.shared.pauseReason)" : "⚡️ 运行中 (\(EnergySaverManager.shared.targetFPS) FPS)"
@@ -83,8 +86,6 @@ public final class MenuBarController: NSObject {
         let quitItem = NSMenuItem(title: "🚪 退出应用", action: #selector(quitApp), keyEquivalent: "q")
         quitItem.target = self
         menu.addItem(quitItem)
-        
-        statusItem.menu = menu
     }
     
     @objc private func togglePause() {
@@ -117,6 +118,8 @@ public final class MenuBarController: NSObject {
                 defer: false
             )
             window.title = "动态壁纸大师 偏好设置"
+            window.isReleasedWhenClosed = false
+            window.delegate = self
             window.contentView = NSHostingView(rootView: DashboardView())
             window.center()
             self.dashboardWindow = window
@@ -124,6 +127,10 @@ public final class MenuBarController: NSObject {
         
         NSApp.activate(ignoringOtherApps: true)
         dashboardWindow?.makeKeyAndOrderFront(nil)
+    }
+    
+    public func windowWillClose(_ notification: Notification) {
+        dashboardWindow = nil
     }
     
     @objc private func quitApp() {

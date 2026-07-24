@@ -12,19 +12,25 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
-        // Run as a menu bar accessory app
+        // Run as a status bar accessory app
         NSApp.setActivationPolicy(.accessory)
         
-        // Start wallpaper engine
+        // Start dynamic wallpaper engine
         WallpaperManager.shared.startEngine()
         
-        // Setup Menu Bar Item & Dashboard
+        // Setup Menu Bar Item & Controller
         self.menuBarController = MenuBarController()
         
-        // Show dashboard window on launch for easy configuration
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { [weak self] in
+        // Show dashboard control window on launch
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) { [weak self] in
             self?.menuBarController?.openDashboard()
         }
+    }
+    
+    // Automatically pop open control center window whenever user clicks App icon in Finder/Dock/Launchpad
+    func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
+        menuBarController?.openDashboard()
+        return true
     }
     
     func applicationWillTerminate(_ notification: Notification) {

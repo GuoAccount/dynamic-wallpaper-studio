@@ -2,73 +2,211 @@ import SwiftUI
 import AppKit
 import UniformTypeIdentifiers
 
-// MARK: - Native macOS Preferences / Settings Window Style
+// MARK: - Liquid Glass Visual Effect Blur View (macOS Liquid Material)
+public struct LiquidGlassBlurView: NSViewRepresentable {
+    public var material: NSVisualEffectView.Material
+    public var blendingMode: NSVisualEffectView.BlendingMode
+    
+    public init(material: NSVisualEffectView.Material = .hudWindow, blendingMode: NSVisualEffectView.BlendingMode = .behindWindow) {
+        self.material = material
+        self.blendingMode = blendingMode
+    }
+    
+    public func makeNSView(context: Context) -> NSVisualEffectView {
+        let view = NSVisualEffectView()
+        view.material = material
+        view.blendingMode = blendingMode
+        view.state = .active
+        return view
+    }
+    
+    public func updateNSView(_ nsView: NSVisualEffectView, context: Context) {
+        nsView.material = material
+        nsView.blendingMode = blendingMode
+    }
+}
+
+// MARK: - Main Dashboard View (Apple Liquid Glass Design Language)
 public struct DashboardView: View {
     @ObservedObject private var wallpaperManager = WallpaperManager.shared
     @ObservedObject private var energySaver = EnergySaverManager.shared
-    @State private var selectedTab = 0
+    @Environment(\.colorScheme) private var colorScheme
     
+    @State private var selectedTab = 0
+    @State private var presets: [WallpaperItem] = WallpaperItem.presets
+    
+    private let tabs = [
+        ("photo.on.rectangle.angled", "壁纸画廊"),
+        ("bolt.shield.fill", "低功耗与性能"),
+        ("display", "多显示器"),
+        ("info.circle.fill", "关于应用")
+    ]
+
     public init() {}
 
     public var body: some View {
-        VStack(spacing: 0) {
-            TabView(selection: $selectedTab) {
-                // Tab 1: 壁纸画廊
-                GalleryTabView()
-                    .tabItem {
-                        Label("壁纸画廊", systemImage: "photo.on.rectangle.angled")
-                    }
-                    .tag(0)
-                
-                // Tab 2: 低功耗与性能
-                PerformanceTabView()
-                    .tabItem {
-                        Label("低功耗与性能", systemImage: "bolt.shield.fill")
-                    }
-                    .tag(1)
-                
-                // Tab 3: 多显示器配置
-                DisplaysTabView()
-                    .tabItem {
-                        Label("多显示器", systemImage: "display")
-                    }
-                    .tag(2)
-                
-                // Tab 4: 关于应用
-                AboutTabView()
-                    .tabItem {
-                        Label("关于", systemImage: "info.circle.fill")
-                    }
-                    .tag(3)
-            }
-            .padding(16)
+        ZStack {
+            // Liquid Glass Translucent Window Background
+            LiquidGlassBlurView(material: .sidebar, blendingMode: .behindWindow)
+                .ignoresSafeArea()
             
-            Divider()
+            // Ambient Liquid Aura
+            Circle()
+                .fill(
+                    RadialGradient(
+                        colors: [Color.cyan.opacity(0.15), Color.purple.opacity(0.12), Color.clear],
+                        center: .topLeading,
+                        startRadius: 20,
+                        endRadius: 400
+                    )
+                )
+                .blur(radius: 30)
+                .ignoresSafeArea()
             
-            // Native macOS Bottom Status Bar
-            HStack {
-                HStack(spacing: 6) {
-                    Circle()
-                        .fill(energySaver.isPaused ? Color.orange : Color.green)
-                        .frame(width: 8, height: 8)
-                    
-                    Text(energySaver.isPaused ? "引擎已休眠 (\(energySaver.pauseReason))" : "引擎运行中 (\(energySaver.targetFPS) FPS - 0% 额外功耗)")
-                        .font(.system(size: 11))
-                        .foregroundColor(.secondary)
-                }
+            VStack(spacing: 0) {
+                // Top Liquid Glass Segmented Navigation Bar
+                liquidGlassHeader
+                    .padding(.horizontal, 20)
+                    .padding(.top, 16)
+                    .padding(.bottom, 12)
                 
-                Spacer()
+                Divider()
+                    .opacity(0.2)
                 
-                Button(action: importLocalFile) {
-                    Label("导入壁纸...", systemImage: "plus")
-                        .font(.system(size: 12))
+                // Tab Detail Views
+                Group {
+                    switch selectedTab {
+                    case 0:
+                        LiquidGalleryTabView()
+                    case 1:
+                        LiquidPerformanceTabView()
+                    case 2:
+                        LiquidDisplaysTabView()
+                    default:
+                        LiquidAboutTabView()
+                    }
                 }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                
+                Divider()
+                    .opacity(0.2)
+                
+                // Bottom Liquid Glass Status Bar
+                liquidGlassFooter
+                    .padding(.horizontal, 20)
+                    .padding(.vertical, 10)
             }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 10)
-            .background(Color(NSColor.windowBackgroundColor))
         }
-        .frame(width: 680, height: 460)
+        .frame(width: 720, height: 490)
+    }
+    
+    // MARK: - Liquid Glass Header Bar
+    private var liquidGlassHeader: some View {
+        HStack {
+            // App Branding Title
+            HStack(spacing: 8) {
+                ZStack {
+                    RoundedRectangle(cornerRadius: 8, style: .continuous)
+                        .fill(LinearGradient(colors: [.cyan, .purple], startPoint: .topLeading, endPoint: .bottomTrailing))
+                        .frame(width: 28, height: 28)
+                    
+                    Image(systemName: "sparkles")
+                        .font(.system(size: 14, weight: .bold))
+                        .foregroundColor(.white)
+                }
+                
+                Text("Dynamic Wallpaper")
+                    .font(.system(size: 15, weight: .bold, design: .rounded))
+                    .foregroundColor(.primary)
+            }
+            
+            Spacer()
+            
+            // Liquid Glass Floating Tab Segmented Control
+            HStack(spacing: 4) {
+                ForEach(0..<tabs.count, id: \.self) { index in
+                    let isSelected = selectedTab == index
+                    Button {
+                        withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
+                            selectedTab = index
+                        }
+                    } label: {
+                        HStack(spacing: 5) {
+                            Image(systemName: tabs[index].0)
+                                .font(.system(size: 11, weight: .semibold))
+                            Text(tabs[index].1)
+                                .font(.system(size: 12, weight: isSelected ? .semibold : .regular))
+                        }
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 6)
+                        .background(
+                            ZStack {
+                                if isSelected {
+                                    RoundedRectangle(cornerRadius: 8, style: .continuous)
+                                        .fill(Color.accentColor.opacity(0.85))
+                                        .shadow(color: Color.accentColor.opacity(0.3), radius: 4, y: 2)
+                                }
+                            }
+                        )
+                        .foregroundColor(isSelected ? .white : .primary.opacity(0.8))
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            .padding(3)
+            .background(
+                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    .fill(Color.primary.opacity(0.06))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 10, style: .continuous)
+                            .stroke(Color.white.opacity(0.15), lineWidth: 0.5)
+                    )
+            )
+        }
+    }
+    
+    // MARK: - Liquid Glass Footer
+    private var liquidGlassFooter: some View {
+        HStack {
+            // Live Status Capsule Badge
+            HStack(spacing: 6) {
+                Circle()
+                    .fill(energySaver.isPaused ? Color.orange : Color.green)
+                    .frame(width: 8, height: 8)
+                    .shadow(color: (energySaver.isPaused ? Color.orange : Color.green).opacity(0.8), radius: 4)
+                
+                Text(energySaver.isPaused ? "引擎已休眠 (\(energySaver.pauseReason))" : "引擎极速运行 (\(energySaver.targetFPS) FPS - 0% 全屏开销)")
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundColor(.secondary)
+            }
+            .padding(.horizontal, 10)
+            .padding(.vertical, 5)
+            .background(
+                Capsule()
+                    .fill(Color.primary.opacity(0.05))
+                    .overlay(Capsule().stroke(Color.white.opacity(0.12), lineWidth: 0.5))
+            )
+            
+            Spacer()
+            
+            // Liquid Import Button
+            Button(action: importLocalFile) {
+                HStack(spacing: 5) {
+                    Image(systemName: "plus.circle.fill")
+                    Text("导入壁纸...")
+                }
+                .font(.system(size: 12, weight: .semibold))
+                .padding(.horizontal, 12)
+                .padding(.vertical, 6)
+                .background(
+                    RoundedRectangle(cornerRadius: 8, style: .continuous)
+                        .fill(LinearGradient(colors: [.blue, .cyan], startPoint: .leading, endPoint: .trailing))
+                        .shadow(color: .blue.opacity(0.3), radius: 6, y: 2)
+                )
+                .foregroundColor(.white)
+            }
+            .buttonStyle(.plain)
+        }
     }
     
     private func importLocalFile() {
@@ -107,44 +245,56 @@ public struct DashboardView: View {
     }
 }
 
-// MARK: - Tab 1: Gallery (Supports Deletion & Hover Actions)
-struct GalleryTabView: View {
+// MARK: - Liquid Gallery Tab (Fluid Glass Cards)
+struct LiquidGalleryTabView: View {
     @ObservedObject private var wallpaperManager = WallpaperManager.shared
     
     private let columns = [
-        GridItem(.flexible(), spacing: 14),
-        GridItem(.flexible(), spacing: 14),
-        GridItem(.flexible(), spacing: 14)
+        GridItem(.flexible(), spacing: 16),
+        GridItem(.flexible(), spacing: 16),
+        GridItem(.flexible(), spacing: 16)
     ]
     
     var body: some View {
         ScrollView {
-            LazyVGrid(columns: columns, spacing: 14) {
+            LazyVGrid(columns: columns, spacing: 16) {
                 ForEach(wallpaperManager.allWallpapers) { item in
                     let isSelected = wallpaperManager.currentWallpaper.id == item.id
                     
                     ZStack(alignment: .topTrailing) {
                         Button {
-                            wallpaperManager.currentWallpaper = item
+                            withAnimation(.easeInOut(duration: 0.2)) {
+                                wallpaperManager.currentWallpaper = item
+                            }
                         } label: {
-                            VStack(alignment: .leading, spacing: 6) {
+                            VStack(alignment: .leading, spacing: 8) {
                                 ZStack {
-                                    RoundedRectangle(cornerRadius: 6)
-                                        .fill(cardPreviewColor(for: item))
-                                        .frame(height: 100)
+                                    RoundedRectangle(cornerRadius: 10, style: .continuous)
+                                        .fill(liquidGradient(for: item))
+                                        .frame(height: 110)
+                                        .overlay(
+                                            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                                                .stroke(Color.white.opacity(0.2), lineWidth: 0.5)
+                                        )
                                     
                                     Image(systemName: iconName(for: item))
-                                        .font(.system(size: 28))
-                                        .foregroundColor(.white.opacity(0.9))
+                                        .font(.system(size: 32))
+                                        .foregroundColor(.white)
+                                        .shadow(color: .black.opacity(0.3), radius: 6)
                                     
                                     if isSelected {
                                         VStack {
                                             HStack {
                                                 Spacer()
-                                                Image(systemName: "checkmark.circle.fill")
-                                                    .font(.title3)
-                                                    .foregroundColor(.white)
-                                                    .padding(6)
+                                                ZStack {
+                                                    Circle()
+                                                        .fill(Color.white)
+                                                        .frame(width: 22, height: 22)
+                                                    Image(systemName: "checkmark.circle.fill")
+                                                        .font(.system(size: 20))
+                                                        .foregroundColor(.blue)
+                                                }
+                                                .padding(6)
                                             }
                                             Spacer()
                                         }
@@ -167,9 +317,9 @@ struct GalleryTabView: View {
                                     }
                                 }
                                 
-                                VStack(alignment: .leading, spacing: 1) {
+                                VStack(alignment: .leading, spacing: 2) {
                                     Text(item.title)
-                                        .font(.system(size: 12, weight: .semibold))
+                                        .font(.system(size: 13, weight: .semibold))
                                         .foregroundColor(.primary)
                                         .lineLimit(1)
                                     Text(item.subtitle)
@@ -177,16 +327,16 @@ struct GalleryTabView: View {
                                         .foregroundColor(.secondary)
                                         .lineLimit(1)
                                 }
-                                .padding(.horizontal, 2)
+                                .padding(.horizontal, 4)
                             }
-                            .padding(6)
+                            .padding(8)
                             .background(
-                                RoundedRectangle(cornerRadius: 8)
-                                    .fill(isSelected ? Color.accentColor.opacity(0.1) : Color(NSColor.controlBackgroundColor))
-                            )
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 8)
-                                    .stroke(isSelected ? Color.accentColor : Color(NSColor.separatorColor), lineWidth: isSelected ? 2 : 1)
+                                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                    .fill(isSelected ? Color.accentColor.opacity(0.12) : Color.primary.opacity(0.04))
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                            .stroke(isSelected ? Color.accentColor : Color.primary.opacity(0.08), lineWidth: isSelected ? 2 : 0.5)
+                                    )
                             )
                         }
                         .buttonStyle(.plain)
@@ -197,12 +347,11 @@ struct GalleryTabView: View {
                                         wallpaperManager.deleteWallpaper(item)
                                     }
                                 } label: {
-                                    Label("删除自定义壁纸", systemImage: "trash")
+                                    Label("删除壁纸", systemImage: "trash")
                                 }
                             }
                         }
                         
-                        // Explicit Trash Icon Button for Custom Wallpapers
                         if !item.isPreset {
                             Button {
                                 withAnimation {
@@ -217,12 +366,11 @@ struct GalleryTabView: View {
                             }
                             .buttonStyle(.plain)
                             .padding(4)
-                            .help("删除此导入壁纸")
                         }
                     }
                 }
             }
-            .padding(4)
+            .padding(16)
         }
     }
     
@@ -231,8 +379,9 @@ struct GalleryTabView: View {
         case .procedural:
             switch item.proceduralStyle {
             case .cosmicNebula: return "sparkles"
-            case .matrixRain: return "terminal.fill"
-            case .cyberGrid: return "grid"
+            case .auroraFlow: return "wind"
+            case .ambientBokeh: return "sun.max.fill"
+            case .cyberGlow: return "horizon.fill"
             case .minimalClock: return "clock.fill"
             case .none: return "wand.and.stars"
             }
@@ -241,19 +390,26 @@ struct GalleryTabView: View {
         }
     }
     
-    private func cardPreviewColor(for item: WallpaperItem) -> Color {
+    private func liquidGradient(for item: WallpaperItem) -> LinearGradient {
         switch item.proceduralStyle {
-        case .cosmicNebula: return Color(red: 0.2, green: 0.1, blue: 0.35)
-        case .matrixRain: return Color(red: 0.05, green: 0.25, blue: 0.1)
-        case .cyberGrid: return Color(red: 0.3, green: 0.1, blue: 0.25)
-        case .minimalClock: return Color(red: 0.1, green: 0.2, blue: 0.35)
-        default: return Color(red: 0.15, green: 0.25, blue: 0.35)
+        case .cosmicNebula:
+            return LinearGradient(colors: [Color(red: 0.3, green: 0.15, blue: 0.6), Color(red: 0.1, green: 0.05, blue: 0.25)], startPoint: .topLeading, endPoint: .bottomTrailing)
+        case .auroraFlow:
+            return LinearGradient(colors: [Color(red: 0.05, green: 0.45, blue: 0.35), Color(red: 0.02, green: 0.15, blue: 0.25)], startPoint: .topLeading, endPoint: .bottomTrailing)
+        case .ambientBokeh:
+            return LinearGradient(colors: [Color(red: 0.15, green: 0.25, blue: 0.5), Color(red: 0.25, green: 0.1, blue: 0.4)], startPoint: .topLeading, endPoint: .bottomTrailing)
+        case .cyberGlow:
+            return LinearGradient(colors: [Color.pink.opacity(0.8), Color.purple.opacity(0.8), Color.blue.opacity(0.8)], startPoint: .topLeading, endPoint: .bottomTrailing)
+        case .minimalClock:
+            return LinearGradient(colors: [Color(red: 0.1, green: 0.3, blue: 0.6), Color(red: 0.05, green: 0.1, blue: 0.25)], startPoint: .top, endPoint: .bottom)
+        default:
+            return LinearGradient(colors: [Color.blue.opacity(0.8), Color.cyan.opacity(0.8)], startPoint: .topLeading, endPoint: .bottomTrailing)
         }
     }
 }
 
-// MARK: - Tab 2: Performance (Native Form)
-struct PerformanceTabView: View {
+// MARK: - Liquid Performance Tab (Glass Grouped Form)
+struct LiquidPerformanceTabView: View {
     @ObservedObject private var energySaver = EnergySaverManager.shared
     @ObservedObject private var wallpaperManager = WallpaperManager.shared
     
@@ -296,11 +452,12 @@ struct PerformanceTabView: View {
             }
         }
         .formStyle(.grouped)
+        .scrollContentBackground(.hidden)
     }
 }
 
-// MARK: - Tab 3: Displays (Native Form)
-struct DisplaysTabView: View {
+// MARK: - Liquid Displays Tab
+struct LiquidDisplaysTabView: View {
     @ObservedObject private var wallpaperManager = WallpaperManager.shared
     
     var body: some View {
@@ -325,6 +482,7 @@ struct DisplaysTabView: View {
             }
         }
         .formStyle(.grouped)
+        .scrollContentBackground(.hidden)
     }
 }
 
@@ -382,24 +540,24 @@ public struct AppleMinimalLogoView: View {
     }
 }
 
-// MARK: - Tab 4: About
-struct AboutTabView: View {
+// MARK: - Liquid About Tab
+struct LiquidAboutTabView: View {
     var body: some View {
         VStack(spacing: 14) {
             Spacer()
             
-            AppleMinimalLogoView(size: 80)
+            AppleMinimalLogoView(size: 84)
             
             VStack(spacing: 4) {
                 Text("Dynamic Wallpaper Studio")
                     .font(.title2.bold())
                 
-                Text("版本 1.0.0 (macOS 原生首选)")
+                Text("版本 1.0.0 (Liquid Glass Edition)")
                     .font(.subheadline)
                     .foregroundColor(.secondary)
             }
             
-            Text("专为 macOS 打造的高性能低功耗动态壁纸工具\n支持 0% 功耗全屏挂起、视频与 GPU 粒子特效")
+            Text("专为 macOS 打造的高性能低功耗动态壁纸工具\n全面融入 Apple 液态玻璃 (Liquid Glass) 设计语言")
                 .font(.caption)
                 .foregroundColor(.secondary)
                 .multilineTextAlignment(.center)

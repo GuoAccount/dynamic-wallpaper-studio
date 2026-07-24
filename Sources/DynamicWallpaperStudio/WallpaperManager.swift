@@ -128,10 +128,12 @@ public final class WallpaperManager: ObservableObject {
             switch currentWallpaper.proceduralStyle ?? .cosmicNebula {
             case .cosmicNebula:
                 CosmicNebulaView(isPaused: isPaused, targetFPS: targetFPS)
-            case .matrixRain:
-                MatrixRainView(isPaused: isPaused, targetFPS: targetFPS)
-            case .cyberGrid:
-                CyberGridView(isPaused: isPaused, targetFPS: targetFPS)
+            case .auroraFlow:
+                AuroraFlowView(isPaused: isPaused, targetFPS: targetFPS)
+            case .ambientBokeh:
+                AmbientBokehView(isPaused: isPaused, targetFPS: targetFPS)
+            case .cyberGlow:
+                CyberGlowView(isPaused: isPaused, targetFPS: targetFPS)
             case .minimalClock:
                 MinimalClockView(isPaused: isPaused)
             }

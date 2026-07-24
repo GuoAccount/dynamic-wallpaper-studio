@@ -1,6 +1,6 @@
 import SwiftUI
 
-// MARK: - 1. Cosmic Nebula Particle View
+// MARK: - 1. Cosmic Nebula Particle View (浩瀚星云 - 60 FPS)
 public struct CosmicNebulaView: View {
     public let isPaused: Bool
     public let targetFPS: Int
@@ -21,7 +21,7 @@ public struct CosmicNebulaView: View {
         var hue: Double
     }
     
-    @State private var stars: [Star] = (0..<120).map { _ in
+    @State private var stars: [Star] = (0..<100).map { _ in
         Star(
             x: Double.random(in: 0...1),
             y: Double.random(in: 0...1),
@@ -36,19 +36,19 @@ public struct CosmicNebulaView: View {
     public var body: some View {
         TimelineView(.periodic(from: .now, by: isPaused ? 999999 : (1.0 / Double(targetFPS)))) { timeline in
             Canvas { context, size in
-                // Dark cosmic background
+                // Deep Midnight Cosmic Background
                 let bgRect = CGRect(origin: .zero, size: size)
                 context.fill(Path(bgRect), with: .color(Color(red: 0.05, green: 0.05, blue: 0.12)))
                 
-                // Draw Ambient Nebulas
+                // Ambient Radial Nebulas
                 let centerPoint = CGPoint(x: size.width * 0.5, y: size.height * 0.5)
                 var nebulaPath = Path()
-                nebulaPath.addEllipse(in: CGRect(x: size.width * 0.2, y: size.height * 0.2, width: size.width * 0.6, height: size.height * 0.6))
+                nebulaPath.addEllipse(in: CGRect(x: size.width * 0.15, y: size.height * 0.15, width: size.width * 0.7, height: size.height * 0.7))
                 context.fill(nebulaPath, with: .radialGradient(
-                    Gradient(colors: [Color.purple.opacity(0.25), Color.blue.opacity(0.15), Color.clear]),
+                    Gradient(colors: [Color.purple.opacity(0.28), Color.blue.opacity(0.18), Color.clear]),
                     center: centerPoint,
                     startRadius: 0,
-                    endRadius: size.width * 0.4
+                    endRadius: size.width * 0.45
                 ))
                 
                 // Render Stars
@@ -56,7 +56,7 @@ public struct CosmicNebulaView: View {
                     let posX = star.x * size.width
                     let posY = star.y * size.height
                     let rect = CGRect(x: posX, y: posY, width: star.radius * 2, height: star.radius * 2)
-                    let starColor = Color(hue: star.hue, saturation: 0.7, brightness: 0.95, opacity: star.opacity)
+                    let starColor = Color(hue: star.hue, saturation: 0.75, brightness: 0.95, opacity: star.opacity)
                     context.fill(Path(ellipseIn: rect), with: .color(starColor))
                 }
             }
@@ -80,8 +80,8 @@ public struct CosmicNebulaView: View {
     }
 }
 
-// MARK: - 2. Matrix Rain Code View
-public struct MatrixRainView: View {
+// MARK: - 2. Aurora Flow View (极光流彩 - 60 FPS Butter Smooth)
+public struct AuroraFlowView: View {
     public let isPaused: Bool
     public let targetFPS: Int
     
@@ -90,22 +90,84 @@ public struct MatrixRainView: View {
         self.targetFPS = targetFPS
     }
     
-    struct MatrixColumn: Identifiable {
-        let id = UUID()
-        var x: Double // ratio 0...1
-        var y: Double // ratio 0...1
-        var speed: Double
-        var chars: [Character]
+    @State private var phase: Double = 0.0
+    
+    public var body: some View {
+        TimelineView(.periodic(from: .now, by: isPaused ? 999999 : (1.0 / Double(targetFPS)))) { timeline in
+            Canvas { context, size in
+                // Night Sky Gradient
+                let bgRect = CGRect(origin: .zero, size: size)
+                context.fill(Path(bgRect), with: .color(Color(red: 0.03, green: 0.06, blue: 0.12)))
+                
+                // Fluid Aurora Ribbons
+                let h = size.height
+                let w = size.width
+                
+                for i in 0..<3 {
+                    var path = Path()
+                    let shift = phase + Double(i) * 1.5
+                    let yOffset = h * (0.3 + Double(i) * 0.15)
+                    
+                    path.move(to: CGPoint(x: 0, y: yOffset + sin(shift) * 40))
+                    path.addCurve(
+                        to: CGPoint(x: w, y: yOffset + cos(shift * 0.8) * 50),
+                        control1: CGPoint(x: w * 0.35, y: yOffset - sin(shift * 1.2) * 90),
+                        control2: CGPoint(x: w * 0.7, y: yOffset + cos(shift * 1.1) * 80)
+                    )
+                    path.addLine(to: CGPoint(x: w, y: h))
+                    path.addLine(to: CGPoint(x: 0, y: h))
+                    path.closeSubpath()
+                    
+                    let colors: [Color] = i == 0 ?
+                        [Color.teal.opacity(0.35), Color.green.opacity(0.1), Color.clear] :
+                        [Color.purple.opacity(0.3), Color.blue.opacity(0.1), Color.clear]
+                    
+                    context.fill(path, with: .linearGradient(
+                        Gradient(colors: colors),
+                        startPoint: CGPoint(x: 0, y: yOffset - 50),
+                        endPoint: CGPoint(x: 0, y: h)
+                    ))
+                }
+            }
+            .onChange(of: timeline.date) { _, _ in
+                if !isPaused {
+                    phase += 0.008
+                }
+            }
+        }
+    }
+}
+
+// MARK: - 3. Ambient Bokeh View (极简光斑 - 60 FPS Calm & Relaxing)
+public struct AmbientBokehView: View {
+    public let isPaused: Bool
+    public let targetFPS: Int
+    
+    public init(isPaused: Bool = false, targetFPS: Int = 60) {
+        self.isPaused = isPaused
+        self.targetFPS = targetFPS
     }
     
-    private static let sampleChars = Array("ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789$#@%&*アイウエオカキクケコサシスセソ")
+    struct Orb: Identifiable {
+        let id = UUID()
+        var x: Double
+        var y: Double
+        var radius: Double
+        var speedX: Double
+        var speedY: Double
+        var hue: Double
+        var opacity: Double
+    }
     
-    @State private var columns: [MatrixColumn] = (0..<45).map { i in
-        MatrixColumn(
-            x: Double(i) / 45.0,
-            y: Double.random(in: -1.0...0),
-            speed: Double.random(in: 0.008...0.02),
-            chars: (0..<15).map { _ in sampleChars.randomElement()! }
+    @State private var orbs: [Orb] = (0..<18).map { _ in
+        Orb(
+            x: Double.random(in: 0.1...0.9),
+            y: Double.random(in: 0.1...0.9),
+            radius: Double.random(in: 80...220),
+            speedX: Double.random(in: -0.0002...0.0002),
+            speedY: Double.random(in: -0.0003...0.0003),
+            hue: Double.random(in: 0.5...0.8), // Cyan to Purple
+            opacity: Double.random(in: 0.12...0.25)
         )
     }
 
@@ -113,43 +175,41 @@ public struct MatrixRainView: View {
         TimelineView(.periodic(from: .now, by: isPaused ? 999999 : (1.0 / Double(targetFPS)))) { timeline in
             Canvas { context, size in
                 let bgRect = CGRect(origin: .zero, size: size)
-                context.fill(Path(bgRect), with: .color(Color(red: 0.02, green: 0.03, blue: 0.02)))
+                context.fill(Path(bgRect), with: .color(Color(red: 0.04, green: 0.05, blue: 0.09)))
                 
-                for col in columns {
-                    let colX = col.x * size.width
-                    for (idx, char) in col.chars.enumerated() {
-                        let charY = (col.y * size.height) + Double(idx * 22)
-                        guard charY >= 0 && charY <= size.height else { continue }
-                        
-                        let opacity = idx == 0 ? 1.0 : (1.0 - Double(idx) / Double(col.chars.count))
-                        let charColor = idx == 0 ? Color.white : Color(red: 0.1, green: 0.95, blue: 0.3, opacity: opacity)
-                        
-                        let resolved = context.resolve(Text(String(char)).font(.system(size: 18, weight: .bold, design: .monospaced)).foregroundColor(charColor))
-                        context.draw(resolved, at: CGPoint(x: colX, y: charY))
-                    }
+                for orb in orbs {
+                    let center = CGPoint(x: orb.x * size.width, y: orb.y * size.height)
+                    let rect = CGRect(x: center.x - orb.radius, y: center.y - orb.radius, width: orb.radius * 2, height: orb.radius * 2)
+                    let orbColor = Color(hue: orb.hue, saturation: 0.8, brightness: 0.9, opacity: orb.opacity)
+                    
+                    context.fill(Path(ellipseIn: rect), with: .radialGradient(
+                        Gradient(colors: [orbColor, orbColor.opacity(0.3), Color.clear]),
+                        center: center,
+                        startRadius: 0,
+                        endRadius: orb.radius
+                    ))
                 }
             }
             .onChange(of: timeline.date) { _, _ in
                 if !isPaused {
-                    updateMatrix()
+                    updateOrbs()
                 }
             }
         }
     }
     
-    private func updateMatrix() {
-        for i in columns.indices {
-            columns[i].y += columns[i].speed
-            if columns[i].y > 1.2 {
-                columns[i].y = -0.3
-                columns[i].chars = (0..<15).map { _ in Self.sampleChars.randomElement()! }
-            }
+    private func updateOrbs() {
+        for i in orbs.indices {
+            orbs[i].x += orbs[i].speedX
+            orbs[i].y += orbs[i].speedY
+            if orbs[i].x < 0.05 || orbs[i].x > 0.95 { orbs[i].speedX *= -1 }
+            if orbs[i].y < 0.05 || orbs[i].y > 0.95 { orbs[i].speedY *= -1 }
         }
     }
 }
 
-// MARK: - 3. Cyberpunk Grid View
-public struct CyberGridView: View {
+// MARK: - 4. Cyber Glow View (赛博夜色 - 60 FPS Smooth)
+public struct CyberGlowView: View {
     public let isPaused: Bool
     public let targetFPS: Int
     
@@ -164,49 +224,36 @@ public struct CyberGridView: View {
         TimelineView(.periodic(from: .now, by: isPaused ? 999999 : (1.0 / Double(targetFPS)))) { timeline in
             Canvas { context, size in
                 let bgRect = CGRect(origin: .zero, size: size)
-                context.fill(Path(bgRect), with: .color(Color(red: 0.05, green: 0.02, blue: 0.09)))
+                context.fill(Path(bgRect), with: .color(Color(red: 0.06, green: 0.03, blue: 0.12)))
                 
-                // Neon Horizon Sun Glow
-                let horizonY = size.height * 0.55
-                let sunRect = CGRect(x: size.width * 0.5 - 120, y: horizonY - 120, width: 240, height: 240)
+                // Horizon Neon Sun Aura
+                let horizonY = size.height * 0.6
+                let sunCenter = CGPoint(x: size.width * 0.5, y: horizonY)
+                let sunRect = CGRect(x: sunCenter.x - 140, y: horizonY - 140, width: 280, height: 280)
+                
                 context.fill(Path(ellipseIn: sunRect), with: .radialGradient(
-                    Gradient(colors: [Color.pink.opacity(0.9), Color.orange.opacity(0.6), Color.clear]),
-                    center: CGPoint(x: size.width * 0.5, y: horizonY),
-                    startRadius: 10,
-                    endRadius: 160
+                    Gradient(colors: [Color.pink.opacity(0.85), Color.purple.opacity(0.5), Color.clear]),
+                    center: sunCenter,
+                    startRadius: 5,
+                    endRadius: 180
                 ))
                 
-                // Perspective Grid Lines
-                var gridPath = Path()
-                let numVertical = 20
-                for i in 0...numVertical {
-                    let ratio = Double(i) / Double(numVertical)
-                    let startX = size.width * ratio
-                    gridPath.move(to: CGPoint(x: size.width * 0.5 + (startX - size.width * 0.5) * 0.1, y: horizonY))
-                    gridPath.addLine(to: CGPoint(x: startX, y: size.height))
-                }
-                
-                // Horizontal moving lines
-                let numHorizontal = 15
-                for i in 0..<numHorizontal {
-                    let progress = (Double(i) + offset).truncatingRemainder(dividingBy: Double(numHorizontal)) / Double(numHorizontal)
-                    let lineY = horizonY + pow(progress, 2.2) * (size.height - horizonY)
-                    gridPath.move(to: CGPoint(x: 0, y: lineY))
-                    gridPath.addLine(to: CGPoint(x: size.width, y: lineY))
-                }
-                
-                context.stroke(gridPath, with: .color(Color.cyan.opacity(0.7)), lineWidth: 1.5)
+                // Horizon Line
+                var linePath = Path()
+                linePath.move(to: CGPoint(x: 0, y: horizonY))
+                linePath.addLine(to: CGPoint(x: size.width, y: horizonY))
+                context.stroke(linePath, with: .color(Color.cyan.opacity(0.6)), lineWidth: 2)
             }
             .onChange(of: timeline.date) { _, _ in
                 if !isPaused {
-                    offset += 0.05
+                    offset += 0.02
                 }
             }
         }
     }
 }
 
-// MARK: - 4. Minimal Clock & Ambient Wallpaper
+// MARK: - 5. Minimal Clock View (极简数字时钟 - 60 FPS)
 public struct MinimalClockView: View {
     public let isPaused: Bool
     
@@ -219,46 +266,38 @@ public struct MinimalClockView: View {
     public var body: some View {
         TimelineView(.periodic(from: .now, by: isPaused ? 60 : 1.0)) { _ in
             ZStack {
-                // Animated Soft Ambient Background
+                // Soft Ambient Background Gradient
                 LinearGradient(
                     colors: [
-                        Color(red: 0.08, green: 0.12, blue: 0.22),
-                        Color(red: 0.15, green: 0.08, blue: 0.20),
-                        Color(red: 0.05, green: 0.06, blue: 0.10)
+                        Color(red: 0.06, green: 0.09, blue: 0.18),
+                        Color(red: 0.12, green: 0.06, blue: 0.16),
+                        Color(red: 0.04, green: 0.04, blue: 0.08)
                     ],
                     startPoint: .topLeading,
                     endPoint: .bottomTrailing
                 )
                 .ignoresSafeArea()
                 
-                // Ambient Glow Ring
+                // Glowing Ambient Aura
                 Circle()
-                    .fill(RadialGradient(colors: [Color.blue.opacity(0.2), Color.purple.opacity(0.1), Color.clear], center: .center, startRadius: 20, endRadius: 300))
-                    .frame(width: 600, height: 600)
+                    .fill(RadialGradient(colors: [Color.cyan.opacity(0.18), Color.purple.opacity(0.1), Color.clear], center: .center, startRadius: 10, endRadius: 280))
+                    .frame(width: 560, height: 560)
                 
-                // Elegant Clock Display
-                VStack(spacing: 8) {
+                // Clock Display
+                VStack(spacing: 6) {
                     Text(timeFormatter.string(from: currentTime))
-                        .font(.system(size: 88, weight: .thin, design: .rounded))
+                        .font(.system(size: 84, weight: .thin, design: .rounded))
                         .foregroundColor(.white.opacity(0.92))
-                        .shadow(color: .blue.opacity(0.5), radius: 20, x: 0, y: 4)
+                        .shadow(color: .cyan.opacity(0.4), radius: 16, x: 0, y: 2)
                     
                     Text(dateFormatter.string(from: currentTime))
-                        .font(.system(size: 22, weight: .medium, design: .monospaced))
+                        .font(.system(size: 20, weight: .medium, design: .monospaced))
                         .foregroundColor(.white.opacity(0.6))
                         .tracking(3)
                 }
             }
             .onAppear {
                 currentTime = Date()
-            }
-            .task {
-                while !Task.isCancelled {
-                    try? await Task.sleep(nanoseconds: 1_000_000_000)
-                    if !isPaused {
-                        currentTime = Date()
-                    }
-                }
             }
         }
     }

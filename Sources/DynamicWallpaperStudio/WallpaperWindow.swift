@@ -15,22 +15,35 @@ public final class WallpaperWindow: NSWindow {
             defer: false
         )
         
-        // Lower than desktop elements / level setup
-        self.level = NSWindow.Level(Int(CGWindowLevelForKey(.desktopWindow)))
+        // Position exactly beneath desktop icons (-2147483641)
+        // desktopIconWindow is -2147483640, so desktopIconWindow - 1 places us directly behind desktop icons
+        let desktopIconLevel = Int(CGWindowLevelForKey(.desktopIconWindow))
+        self.level = NSWindow.Level(desktopIconLevel - 1)
         
-        // Pass all mouse events to desktop icons
+        // Pass all mouse events through to desktop icons and desktop right-click menu
         self.ignoresMouseEvents = true
         
-        // Stay stationary on all spaces / Mission Control
-        self.collectionBehavior = [.canJoinAllSpaces, .stationary, .ignoresCycle]
+        // Lock window across all virtual desktops / Spaces / Mission Control / Expose
+        self.collectionBehavior = [
+            .canJoinAllSpaces,
+            .stationary,
+            .ignoresCycle,
+            .fullScreenAuxiliary
+        ]
         
+        // CRITICAL: Prevent macOS WindowServer from hiding wallpaper during "Show Desktop" gesture / Cmd+F3
+        self.canHide = false
+        self.hidesOnDeactivate = false
         self.isOpaque = true
         self.backgroundColor = .black
         self.hasShadow = false
         self.isReleasedWhenClosed = false
-        self.hidesOnDeactivate = false
         
-        // Position exactly matching the screen
+        // Fit exact screen dimensions
         self.setFrame(contentRect, display: true)
     }
+    
+    // Override canBecomeKey & canBecomeMain so it never steals focus from desktop
+    override public var canBecomeKey: Bool { false }
+    override public var canBecomeMain: Bool { false }
 }

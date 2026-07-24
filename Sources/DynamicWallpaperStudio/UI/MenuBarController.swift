@@ -137,6 +137,15 @@ public final class MenuBarController: NSObject, NSWindowDelegate, NSMenuDelegate
     }
     
     @objc private func quitApp() {
-        NSApplication.shared.terminate(nil)
+        WallpaperManager.shared.stopEngine()
+        if let window = dashboardWindow {
+            window.orderOut(nil)
+            window.close()
+        }
+        if let statusItem = statusItem {
+            NSStatusBar.system.removeStatusItem(statusItem)
+        }
+        NSApp.terminate(nil)
+        exit(0)
     }
 }

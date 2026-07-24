@@ -65,6 +65,15 @@ public final class WallpaperManager: ObservableObject {
         rebuildWindows()
     }
     
+    public func stopEngine() {
+        for (_, window) in wallpaperWindows {
+            window.orderOut(nil)
+            window.contentView = nil
+            window.close()
+        }
+        wallpaperWindows.removeAll()
+    }
+    
     private func bindEnergySaver() {
         EnergySaverManager.shared.$isPaused
             .receive(on: DispatchQueue.main)

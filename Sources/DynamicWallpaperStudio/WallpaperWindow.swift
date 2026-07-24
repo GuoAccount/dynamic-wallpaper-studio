@@ -15,10 +15,9 @@ public final class WallpaperWindow: NSWindow {
             defer: false
         )
         
-        // Position exactly beneath desktop icons (-2147483641)
-        // desktopIconWindow is -2147483640, so desktopIconWindow - 1 places us directly behind desktop icons
-        let desktopIconLevel = Int(CGWindowLevelForKey(.desktopIconWindow))
-        self.level = NSWindow.Level(desktopIconLevel - 1)
+        // Exact macOS Desktop Wallpaper Window Level (-2147483648)
+        // Binds window directly to macOS Desktop Picture Layer so left/right Space swipe animations stay 100% seamless
+        self.level = NSWindow.Level(Int(CGWindowLevelForKey(.desktopWindow)))
         
         // Pass all mouse events through to desktop icons and desktop right-click menu
         self.ignoresMouseEvents = true
@@ -31,7 +30,10 @@ public final class WallpaperWindow: NSWindow {
             .fullScreenAuxiliary
         ]
         
-        // CRITICAL: Prevent macOS WindowServer from hiding wallpaper during "Show Desktop" gesture / Cmd+F3
+        // Disable window animation & transition delays
+        self.animationBehavior = .none
+        
+        // CRITICAL: Prevent macOS WindowServer from hiding wallpaper during "Show Desktop" gesture / Cmd+F3 / Space switching
         self.canHide = false
         self.hidesOnDeactivate = false
         self.isOpaque = true
@@ -41,6 +43,7 @@ public final class WallpaperWindow: NSWindow {
         
         // Fit exact screen dimensions
         self.setFrame(contentRect, display: true)
+        self.orderFrontRegardless()
     }
     
     // Override canBecomeKey & canBecomeMain so it never steals focus from desktop

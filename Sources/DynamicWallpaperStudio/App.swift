@@ -21,8 +21,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // Setup Menu Bar Item & Controller
         self.menuBarController = MenuBarController()
         
-        // Show dashboard control window on launch
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) { [weak self] in
+        // Immediately open dashboard control window on launch
+        DispatchQueue.main.async { [weak self] in
             self?.menuBarController?.openDashboard()
         }
     }

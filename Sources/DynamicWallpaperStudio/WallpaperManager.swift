@@ -5,31 +5,60 @@ import Combine
 public final class WallpaperManager: ObservableObject {
     public static let shared = WallpaperManager()
     
+    private static let storageKey = "UserCustomWallpapers_v1"
+    
+    @Published public private(set) var customWallpapers: [WallpaperItem] = []
+    @Published public private(set) var allWallpapers: [WallpaperItem] = WallpaperItem.presets
+    
     @Published public var currentWallpaper: WallpaperItem = WallpaperItem.presets[0] {
         didSet { applyWallpaperToAllScreens() }
     }
     @Published public var isAudioMuted: Bool = true {
         didSet { applyWallpaperToAllScreens() }
     }
-    @Published public var customVideoURL: URL? {
-        didSet {
-            if let url = customVideoURL {
-                currentWallpaper = WallpaperItem(
-                    title: url.lastPathComponent,
-                    subtitle: "自定义本地视频壁纸",
-                    type: .video,
-                    url: url
-                )
-            }
-        }
-    }
 
     private var wallpaperWindows: [NSScreen: WallpaperWindow] = [:]
     private var cancellables = Set<AnyCancellable>()
     
     private init() {
+        loadCustomWallpapers()
         setupScreenNotifications()
         bindEnergySaver()
+    }
+    
+    public func addCustomWallpaper(_ item: WallpaperItem) {
+        customWallpapers.insert(item, at: 0)
+        saveCustomWallpapers()
+        updateAllWallpapers()
+        currentWallpaper = item
+    }
+    
+    public func deleteWallpaper(_ item: WallpaperItem) {
+        customWallpapers.removeAll { $0.id == item.id }
+        saveCustomWallpapers()
+        updateAllWallpapers()
+        
+        if currentWallpaper.id == item.id {
+            currentWallpaper = WallpaperItem.presets[0]
+        }
+    }
+    
+    private func loadCustomWallpapers() {
+        if let data = UserDefaults.standard.data(forKey: Self.storageKey),
+           let saved = try? JSONDecoder().decode([WallpaperItem].self, from: data) {
+            self.customWallpapers = saved
+        }
+        updateAllWallpapers()
+    }
+    
+    private func saveCustomWallpapers() {
+        if let data = try? JSONEncoder().encode(customWallpapers) {
+            UserDefaults.standard.set(data, forKey: Self.storageKey)
+        }
+    }
+    
+    private func updateAllWallpapers() {
+        allWallpapers = customWallpapers + WallpaperItem.presets
     }
     
     public func startEngine() {

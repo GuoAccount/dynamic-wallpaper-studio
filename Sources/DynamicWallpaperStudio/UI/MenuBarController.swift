@@ -111,12 +111,12 @@ public final class MenuBarController: NSObject {
     @objc public func openDashboard() {
         if dashboardWindow == nil {
             let window = NSWindow(
-                contentRect: NSRect(x: 0, y: 0, width: 780, height: 480),
-                styleMask: [.titled, .closable, .miniaturizable, .resizable],
+                contentRect: NSRect(x: 0, y: 0, width: 680, height: 460),
+                styleMask: [.titled, .closable, .miniaturizable],
                 backing: .buffered,
                 defer: false
             )
-            window.title = "动态壁纸大师"
+            window.title = "动态壁纸大师 偏好设置"
             window.contentView = NSHostingView(rootView: DashboardView())
             window.center()
             self.dashboardWindow = window

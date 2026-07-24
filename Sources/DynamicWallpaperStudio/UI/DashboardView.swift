@@ -2,127 +2,73 @@ import SwiftUI
 import AppKit
 import UniformTypeIdentifiers
 
-// MARK: - Sidebar Categories
-public enum SidebarCategory: String, CaseIterable, Identifiable {
-    case gallery = "壁纸画廊"
-    case performance = "低功耗与性能"
-    case displays = "多显示器配置"
-    case about = "关于应用"
-    
-    public var id: String { rawValue }
-    
-    var icon: String {
-        switch self {
-        case .gallery: return "photo.on.rectangle.angled"
-        case .performance: return "bolt.shield.fill"
-        case .displays: return "display"
-        case .about: return "info.circle.fill"
-        }
-    }
-}
-
-// MARK: - Main Dashboard View (HSplitView - 60 FPS Zero-Lag Resizing)
+// MARK: - Native macOS Preferences / Settings Window Style
 public struct DashboardView: View {
-    @State private var selectedCategory: SidebarCategory = .gallery
-    @State private var presets: [WallpaperItem] = WallpaperItem.presets
+    @ObservedObject private var wallpaperManager = WallpaperManager.shared
+    @ObservedObject private var energySaver = EnergySaverManager.shared
+    @State private var selectedTab = 0
     
     public init() {}
 
     public var body: some View {
-        HSplitView {
-            // Left Sidebar Column
-            SidebarListView(selectedCategory: $selectedCategory)
-                .frame(minWidth: 180, idealWidth: 200, maxWidth: 240)
-            
-            // Right Detail Column
-            DetailContentView(selectedCategory: selectedCategory, presets: $presets)
-                .frame(minWidth: 500, idealWidth: 580)
-        }
-        .frame(minWidth: 720, minHeight: 460)
-    }
-}
-
-// MARK: - Sidebar List View
-struct SidebarListView: View {
-    @Binding var selectedCategory: SidebarCategory
-    @ObservedObject private var energySaver = EnergySaverManager.shared
-    
-    var body: some View {
         VStack(spacing: 0) {
-            List(SidebarCategory.allCases, id: \.self, selection: $selectedCategory) { category in
-                HStack(spacing: 8) {
-                    Image(systemName: category.icon)
-                        .foregroundColor(selectedCategory == category ? .accentColor : .secondary)
-                    Text(category.rawValue)
-                        .font(.system(size: 13, weight: selectedCategory == category ? .semibold : .regular))
-                }
-                .padding(.vertical, 2)
-                .tag(category)
+            TabView(selection: $selectedTab) {
+                // Tab 1: 壁纸画廊
+                GalleryTabView()
+                    .tabItem {
+                        Label("壁纸画廊", systemImage: "photo.on.rectangle.angled")
+                    }
+                    .tag(0)
+                
+                // Tab 2: 低功耗与性能
+                PerformanceTabView()
+                    .tabItem {
+                        Label("低功耗与性能", systemImage: "bolt.shield.fill")
+                    }
+                    .tag(1)
+                
+                // Tab 3: 多显示器配置
+                DisplaysTabView()
+                    .tabItem {
+                        Label("多显示器", systemImage: "display")
+                    }
+                    .tag(2)
+                
+                // Tab 4: 关于应用
+                AboutTabView()
+                    .tabItem {
+                        Label("关于", systemImage: "info.circle.fill")
+                    }
+                    .tag(3)
             }
-            .listStyle(.sidebar)
+            .padding(16)
             
             Divider()
             
-            // Engine Status Badge
-            HStack(spacing: 8) {
-                Circle()
-                    .fill(energySaver.isPaused ? Color.orange : Color.green)
-                    .frame(width: 8, height: 8)
-                
-                VStack(alignment: .leading, spacing: 1) {
-                    Text(energySaver.isPaused ? "引擎休眠中" : "运行中 (\(energySaver.targetFPS) FPS)")
-                        .font(.system(size: 11, weight: .semibold))
-                    Text(energySaver.pauseReason)
-                        .font(.system(size: 10))
-                        .foregroundColor(.secondary)
-                        .lineLimit(1)
-                }
-                Spacer(minLength: 0)
-            }
-            .padding(10)
-            .background(Color(NSColor.controlBackgroundColor))
-        }
-    }
-}
-
-// MARK: - Detail Content Router
-struct DetailContentView: View {
-    let selectedCategory: SidebarCategory
-    @Binding var presets: [WallpaperItem]
-    
-    var body: some View {
-        VStack(spacing: 0) {
-            // Header Bar
+            // Native macOS Bottom Status Bar
             HStack {
-                Text(selectedCategory.rawValue)
-                    .font(.title2.bold())
+                HStack(spacing: 6) {
+                    Circle()
+                        .fill(energySaver.isPaused ? Color.orange : Color.green)
+                        .frame(width: 8, height: 8)
+                    
+                    Text(energySaver.isPaused ? "引擎已休眠 (\(energySaver.pauseReason))" : "引擎运行中 (\(energySaver.targetFPS) FPS - 0% 额外功耗)")
+                        .font(.system(size: 11))
+                        .foregroundColor(.secondary)
+                }
+                
                 Spacer()
                 
                 Button(action: importLocalFile) {
-                    Label("导入本地文件", systemImage: "plus")
+                    Label("导入壁纸...", systemImage: "plus")
+                        .font(.system(size: 12))
                 }
             }
-            .padding(.horizontal, 20)
-            .padding(.top, 16)
-            .padding(.bottom, 12)
-            
-            Divider()
-            
-            // Selected View Content
-            Group {
-                switch selectedCategory {
-                case .gallery:
-                    GalleryDetailView(presets: $presets)
-                case .performance:
-                    PerformanceDetailView()
-                case .displays:
-                    DisplaysDetailView()
-                case .about:
-                    AboutDetailView()
-                }
-            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 10)
+            .background(Color(NSColor.windowBackgroundColor))
         }
-        .background(Color(NSColor.windowBackgroundColor))
+        .frame(width: 680, height: 460)
     }
     
     private func importLocalFile() {
@@ -142,98 +88,141 @@ struct DetailContentView: View {
             if url.pathExtension.lowercased() == "html" || url.pathExtension.lowercased() == "htm" {
                 newItem = WallpaperItem(
                     title: url.deletingPathExtension().lastPathComponent,
-                    subtitle: "本地网页壁纸",
+                    subtitle: "自定义 HTML 网页",
                     type: .web,
-                    url: url
+                    url: url,
+                    isPreset: false
                 )
             } else {
                 newItem = WallpaperItem(
                     title: url.deletingPathExtension().lastPathComponent,
-                    subtitle: "本地高清视频壁纸",
+                    subtitle: "自定义 HD 视频",
                     type: .video,
-                    url: url
+                    url: url,
+                    isPreset: false
                 )
             }
-            presets.insert(newItem, at: 0)
-            WallpaperManager.shared.currentWallpaper = newItem
+            wallpaperManager.addCustomWallpaper(newItem)
         }
     }
 }
 
-// MARK: - 1. Gallery Detail View
-struct GalleryDetailView: View {
-    @Binding var presets: [WallpaperItem]
+// MARK: - Tab 1: Gallery (Supports Deletion & Hover Actions)
+struct GalleryTabView: View {
     @ObservedObject private var wallpaperManager = WallpaperManager.shared
     
     private let columns = [
-        GridItem(.flexible(), spacing: 16),
-        GridItem(.flexible(), spacing: 16)
+        GridItem(.flexible(), spacing: 14),
+        GridItem(.flexible(), spacing: 14),
+        GridItem(.flexible(), spacing: 14)
     ]
     
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 16) {
-                Text("点击壁纸卡片以立即切换当前桌面背景。")
-                    .font(.subheadline)
-                    .foregroundColor(.secondary)
-                
-                LazyVGrid(columns: columns, spacing: 16) {
-                    ForEach(presets) { item in
-                        let isSelected = wallpaperManager.currentWallpaper.id == item.id
-                        
+            LazyVGrid(columns: columns, spacing: 14) {
+                ForEach(wallpaperManager.allWallpapers) { item in
+                    let isSelected = wallpaperManager.currentWallpaper.id == item.id
+                    
+                    ZStack(alignment: .topTrailing) {
                         Button {
                             wallpaperManager.currentWallpaper = item
                         } label: {
-                            VStack(alignment: .leading, spacing: 8) {
+                            VStack(alignment: .leading, spacing: 6) {
                                 ZStack {
-                                    RoundedRectangle(cornerRadius: 8)
-                                        .fill(cardColor(for: item))
-                                        .frame(height: 110)
+                                    RoundedRectangle(cornerRadius: 6)
+                                        .fill(cardPreviewColor(for: item))
+                                        .frame(height: 100)
                                     
                                     Image(systemName: iconName(for: item))
-                                        .font(.system(size: 32))
-                                        .foregroundColor(.white)
+                                        .font(.system(size: 28))
+                                        .foregroundColor(.white.opacity(0.9))
                                     
                                     if isSelected {
                                         VStack {
                                             HStack {
                                                 Spacer()
                                                 Image(systemName: "checkmark.circle.fill")
-                                                    .font(.title2)
+                                                    .font(.title3)
                                                     .foregroundColor(.white)
-                                                    .padding(8)
+                                                    .padding(6)
+                                            }
+                                            Spacer()
+                                        }
+                                    }
+                                    
+                                    if !item.isPreset {
+                                        VStack {
+                                            HStack {
+                                                Text("自定义")
+                                                    .font(.system(size: 9, weight: .bold))
+                                                    .padding(.horizontal, 6)
+                                                    .padding(.vertical, 2)
+                                                    .background(Capsule().fill(Color.blue))
+                                                    .foregroundColor(.white)
+                                                    .padding(6)
+                                                Spacer()
                                             }
                                             Spacer()
                                         }
                                     }
                                 }
                                 
-                                VStack(alignment: .leading, spacing: 2) {
+                                VStack(alignment: .leading, spacing: 1) {
                                     Text(item.title)
-                                        .font(.system(size: 13, weight: .bold))
+                                        .font(.system(size: 12, weight: .semibold))
                                         .foregroundColor(.primary)
+                                        .lineLimit(1)
                                     Text(item.subtitle)
-                                        .font(.caption)
+                                        .font(.system(size: 10))
                                         .foregroundColor(.secondary)
                                         .lineLimit(1)
                                 }
-                                .padding(.horizontal, 4)
+                                .padding(.horizontal, 2)
                             }
-                            .padding(8)
+                            .padding(6)
                             .background(
-                                RoundedRectangle(cornerRadius: 10)
-                                    .fill(isSelected ? Color.accentColor.opacity(0.12) : Color(NSColor.controlBackgroundColor))
+                                RoundedRectangle(cornerRadius: 8)
+                                    .fill(isSelected ? Color.accentColor.opacity(0.1) : Color(NSColor.controlBackgroundColor))
                             )
                             .overlay(
-                                RoundedRectangle(cornerRadius: 10)
+                                RoundedRectangle(cornerRadius: 8)
                                     .stroke(isSelected ? Color.accentColor : Color(NSColor.separatorColor), lineWidth: isSelected ? 2 : 1)
                             )
                         }
                         .buttonStyle(.plain)
+                        .contextMenu {
+                            if !item.isPreset {
+                                Button(role: .destructive) {
+                                    withAnimation {
+                                        wallpaperManager.deleteWallpaper(item)
+                                    }
+                                } label: {
+                                    Label("删除自定义壁纸", systemImage: "trash")
+                                }
+                            }
+                        }
+                        
+                        // Explicit Trash Icon Button for Custom Wallpapers
+                        if !item.isPreset {
+                            Button {
+                                withAnimation {
+                                    wallpaperManager.deleteWallpaper(item)
+                                }
+                            } label: {
+                                Image(systemName: "trash.circle.fill")
+                                    .font(.system(size: 18))
+                                    .foregroundColor(.red)
+                                    .background(Circle().fill(Color.white))
+                                    .shadow(radius: 2)
+                            }
+                            .buttonStyle(.plain)
+                            .padding(4)
+                            .help("删除此导入壁纸")
+                        }
                     }
                 }
             }
-            .padding(20)
+            .padding(4)
         }
     }
     
@@ -252,30 +241,30 @@ struct GalleryDetailView: View {
         }
     }
     
-    private func cardColor(for item: WallpaperItem) -> Color {
+    private func cardPreviewColor(for item: WallpaperItem) -> Color {
         switch item.proceduralStyle {
-        case .cosmicNebula: return .purple
-        case .matrixRain: return Color(red: 0, green: 0.35, blue: 0.1)
-        case .cyberGrid: return .indigo
-        case .minimalClock: return .blue
-        default: return .cyan
+        case .cosmicNebula: return Color(red: 0.2, green: 0.1, blue: 0.35)
+        case .matrixRain: return Color(red: 0.05, green: 0.25, blue: 0.1)
+        case .cyberGrid: return Color(red: 0.3, green: 0.1, blue: 0.25)
+        case .minimalClock: return Color(red: 0.1, green: 0.2, blue: 0.35)
+        default: return Color(red: 0.15, green: 0.25, blue: 0.35)
         }
     }
 }
 
-// MARK: - 2. Performance Detail View
-struct PerformanceDetailView: View {
+// MARK: - Tab 2: Performance (Native Form)
+struct PerformanceTabView: View {
     @ObservedObject private var energySaver = EnergySaverManager.shared
     @ObservedObject private var wallpaperManager = WallpaperManager.shared
     
     var body: some View {
         Form {
-            Section("功耗与智能休眠策略") {
+            Section("智能休眠与节能策略") {
                 Toggle(isOn: $energySaver.pauseOnFullscreen) {
                     VStack(alignment: .leading, spacing: 2) {
                         Text("全屏应用/游戏自动暂停")
                             .font(.system(size: 13, weight: .medium))
-                        Text("检测到全屏视频、全屏游戏或 IDE 时自动休眠，实现 0% CPU/GPU 占用")
+                        Text("全屏视频、全屏游戏或 IDE 激活时自动冻结壁纸，实现 0% CPU/GPU 占用")
                             .font(.caption)
                             .foregroundColor(.secondary)
                     }
@@ -285,7 +274,7 @@ struct PerformanceDetailView: View {
                     VStack(alignment: .leading, spacing: 2) {
                         Text("电池供电自动降帧 (60 ➔ 30 FPS)")
                             .font(.system(size: 13, weight: .medium))
-                        Text("未连接电源时，限制渲染上限以延长 Mac 续航")
+                        Text("未连接电源时限制最大帧率，节省电池电量")
                             .font(.caption)
                             .foregroundColor(.secondary)
                     }
@@ -295,45 +284,41 @@ struct PerformanceDetailView: View {
                     VStack(alignment: .leading, spacing: 2) {
                         Text("低电量模式完全暂停壁纸")
                             .font(.system(size: 13, weight: .medium))
-                        Text("电池处于低电量状态时暂停渲染")
+                        Text("电池进入低电量模式时暂停所有动画")
                             .font(.caption)
                             .foregroundColor(.secondary)
                     }
                 }
             }
             
-            Section("音频与音效设置") {
-                Toggle("视频全局静音", isOn: $wallpaperManager.isAudioMuted)
+            Section("声音与解码") {
+                Toggle("视频全局静音 (降低 CPU 音频解码开销)", isOn: $wallpaperManager.isAudioMuted)
             }
         }
         .formStyle(.grouped)
     }
 }
 
-// MARK: - 3. Displays Detail View
-struct DisplaysDetailView: View {
+// MARK: - Tab 3: Displays (Native Form)
+struct DisplaysTabView: View {
     @ObservedObject private var wallpaperManager = WallpaperManager.shared
     
     var body: some View {
         Form {
-            Section("硬件显示设备") {
+            Section("显示设备管理") {
                 ForEach(NSScreen.screens, id: \.self) { screen in
                     LabeledContent {
                         Text("已应用: \(wallpaperManager.currentWallpaper.title)")
                             .foregroundColor(.secondary)
                     } label: {
-                        HStack(spacing: 10) {
+                        HStack(spacing: 8) {
                             Image(systemName: "display")
-                                .font(.title3)
                                 .foregroundColor(.accentColor)
-                            
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text(screen.localizedName)
-                                    .font(.system(size: 13, weight: .semibold))
-                                Text("分辨率: \(Int(screen.frame.width)) × \(Int(screen.frame.height))")
-                                    .font(.caption)
-                                    .foregroundColor(.secondary)
-                            }
+                            Text(screen.localizedName)
+                                .font(.system(size: 13, weight: .medium))
+                            Text("(\(Int(screen.frame.width))×\(Int(screen.frame.height)))")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
                         }
                     }
                 }
@@ -343,39 +328,84 @@ struct DisplaysDetailView: View {
     }
 }
 
-// MARK: - 4. About Detail View
-struct AboutDetailView: View {
+// MARK: - Apple Minimalist Logo View
+public struct AppleMinimalLogoView: View {
+    var size: CGFloat = 64
+    
+    public init(size: CGFloat = 64) {
+        self.size = size
+    }
+    
+    public var body: some View {
+        ZStack {
+            RoundedRectangle(cornerRadius: size * 0.22, style: .continuous)
+                .fill(
+                    LinearGradient(
+                        colors: [
+                            Color(red: 0.12, green: 0.16, blue: 0.32),
+                            Color(red: 0.06, green: 0.08, blue: 0.18)
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
+                .shadow(color: Color.black.opacity(0.12), radius: size * 0.08, x: 0, y: size * 0.04)
+                .overlay(
+                    RoundedRectangle(cornerRadius: size * 0.22, style: .continuous)
+                        .stroke(Color.white.opacity(0.15), lineWidth: 1)
+                )
+            
+            // Minimalist Display Frame with Sparkles
+            VStack(spacing: size * 0.03) {
+                ZStack {
+                    RoundedRectangle(cornerRadius: size * 0.08, style: .continuous)
+                        .fill(
+                            LinearGradient(
+                                colors: [Color.cyan.opacity(0.85), Color.purple.opacity(0.85), Color.blue.opacity(0.85)],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
+                        .frame(width: size * 0.52, height: size * 0.34)
+                    
+                    Image(systemName: "sparkles")
+                        .font(.system(size: size * 0.2, weight: .semibold))
+                        .foregroundColor(.white)
+                }
+                
+                RoundedRectangle(cornerRadius: 1)
+                    .fill(Color.white.opacity(0.4))
+                    .frame(width: size * 0.18, height: size * 0.03)
+            }
+        }
+        .frame(width: size, height: size)
+    }
+}
+
+// MARK: - Tab 4: About
+struct AboutTabView: View {
     var body: some View {
-        VStack(spacing: 16) {
+        VStack(spacing: 14) {
             Spacer()
             
-            ZStack {
-                Circle()
-                    .fill(LinearGradient(colors: [.blue, .cyan], startPoint: .topLeading, endPoint: .bottomTrailing))
-                    .frame(width: 72, height: 72)
-                
-                Image(systemName: "sparkles.tv.fill")
-                    .font(.system(size: 36))
-                    .foregroundColor(.white)
-            }
+            AppleMinimalLogoView(size: 80)
             
             VStack(spacing: 4) {
                 Text("Dynamic Wallpaper Studio")
                     .font(.title2.bold())
-                Text("版本 1.0.0 (原生 macOS 极简版)")
+                
+                Text("版本 1.0.0 (macOS 原生首选)")
                     .font(.subheadline)
                     .foregroundColor(.secondary)
             }
             
-            Text("专为 macOS 设计的极简低功耗动态壁纸引擎，全面支持 0% 功耗全屏挂起、视频与原生 GPU 粒子特效。")
-                .font(.body)
+            Text("专为 macOS 打造的高性能低功耗动态壁纸工具\n支持 0% 功耗全屏挂起、视频与 GPU 粒子特效")
+                .font(.caption)
                 .foregroundColor(.secondary)
                 .multilineTextAlignment(.center)
-                .padding(.horizontal, 40)
             
             Spacer()
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(Color(NSColor.controlBackgroundColor))
     }
 }

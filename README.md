@@ -1,4 +1,4 @@
-# macOS 动态壁纸大师 (Dynamic Wallpaper Studio)
+# Dynamic Wallpaper Studio (macOS 动态壁纸大师)
 
 一个专为 macOS 设计的**极致高性能、低功耗原生动态壁纸应用**。基于 **Swift 6 + SwiftUI + AppKit + Metal + AVFoundation** 开发。
 
@@ -46,11 +46,11 @@
 swift build -c release
 
 # 打包为 macOS 应用程序包
-mkdir -p DynamicWallpaper.app/Contents/MacOS DynamicWallpaper.app/Contents/Resources
-cp .build/release/DynamicWallpaper DynamicWallpaper.app/Contents/MacOS/
+mkdir -p DynamicWallpaperStudio.app/Contents/MacOS DynamicWallpaperStudio.app/Contents/Resources
+cp .build/release/DynamicWallpaperStudio DynamicWallpaperStudio.app/Contents/MacOS/
 
 # 打开运行
-open DynamicWallpaper.app
+open DynamicWallpaperStudio.app
 ```
 
 ---

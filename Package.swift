@@ -2,22 +2,22 @@
 import PackageDescription
 
 let package = Package(
-    name: "DynamicWallpaper",
+    name: "DynamicWallpaperStudio",
     platforms: [
         .macOS(.v14)
     ],
     products: [
         .executable(
-            name: "DynamicWallpaper",
-            targets: ["DynamicWallpaper"]
+            name: "DynamicWallpaperStudio",
+            targets: ["DynamicWallpaperStudio"]
         )
     ],
     dependencies: [],
     targets: [
         .executableTarget(
-            name: "DynamicWallpaper",
+            name: "DynamicWallpaperStudio",
             dependencies: [],
-            path: "Sources/DynamicWallpaper",
+            path: "Sources/DynamicWallpaperStudio",
             resources: [],
             linkerSettings: [
                 .linkedFramework("IOKit"),

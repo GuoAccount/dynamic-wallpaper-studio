@@ -5,9 +5,9 @@
     <key>CFBundleDevelopmentRegion</key>
     <string>zh_CN</string>
     <key>CFBundleExecutable</key>
-    <string>DynamicWallpaper</string>
+    <string>DynamicWallpaperStudio</string>
     <key>CFBundleIdentifier</key>
-    <string>com.antigravity.DynamicWallpaper</string>
+    <string>com.antigravity.DynamicWallpaperStudio</string>
     <key>CFBundleInfoDictionaryVersion</key>
     <string>6.0</string>
     <key>CFBundleName</key>

@@ -1,0 +1,6 @@
+# macOS / Swift build files
+.DS_Store
+.build/
+*.xcodeproj
+*.xcworkspace
+*.tmp

@@ -111,15 +111,12 @@ public final class MenuBarController: NSObject {
     @objc public func openDashboard() {
         if dashboardWindow == nil {
             let window = NSWindow(
-                contentRect: NSRect(x: 0, y: 0, width: 760, height: 520),
-                styleMask: [.titled, .closable, .miniaturizable, .fullSizeContentView],
+                contentRect: NSRect(x: 0, y: 0, width: 780, height: 480),
+                styleMask: [.titled, .closable, .miniaturizable, .resizable],
                 backing: .buffered,
                 defer: false
             )
-            window.title = "Dynamic Wallpaper Studio"
-            window.titlebarAppearsTransparent = true
-            window.titleVisibility = .hidden
-            window.isMovableByWindowBackground = true
+            window.title = "动态壁纸大师"
             window.contentView = NSHostingView(rootView: DashboardView())
             window.center()
             self.dashboardWindow = window

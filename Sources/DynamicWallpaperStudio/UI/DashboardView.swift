@@ -2,15 +2,15 @@ import SwiftUI
 import AppKit
 import UniformTypeIdentifiers
 
-// MARK: - Main Dashboard View (Apple System Settings Style)
+// MARK: - Native macOS Dashboard View (NavigationSplitView + Sidebar + Form)
 public struct DashboardView: View {
     @ObservedObject private var wallpaperManager = WallpaperManager.shared
     @ObservedObject private var energySaver = EnergySaverManager.shared
     
-    @State private var selectedTab: SidebarItem = .gallery
+    @State private var selection: SidebarCategory? = .gallery
     @State private var presets: [WallpaperItem] = WallpaperItem.presets
     
-    enum SidebarItem: String, CaseIterable, Identifiable {
+    enum SidebarCategory: String, CaseIterable, Identifiable {
         case gallery = "壁纸画廊"
         case performance = "低功耗与性能"
         case displays = "多显示器配置"
@@ -18,7 +18,7 @@ public struct DashboardView: View {
         
         var id: String { rawValue }
         
-        var iconName: String {
+        var icon: String {
             switch self {
             case .gallery: return "photo.on.rectangle.angled"
             case .performance: return "bolt.shield.fill"
@@ -26,354 +26,72 @@ public struct DashboardView: View {
             case .about: return "info.circle.fill"
             }
         }
-        
-        var iconColor: Color {
-            switch self {
-            case .gallery: return .cyan
-            case .performance: return .green
-            case .displays: return .blue
-            case .about: return .purple
-            }
-        }
     }
     
     public init() {}
 
     public var body: some View {
-        HStack(spacing: 0) {
-            // Left Sidebar
-            sidebarView
-                .frame(width: 220)
-                .background(Color(NSColor.controlBackgroundColor).opacity(0.6))
-            
-            Divider()
-                .opacity(0.4)
-            
-            // Right Content Detail View
-            VStack(spacing: 0) {
-                topNavigationBar
-                    .padding(.horizontal, 24)
-                    .padding(.top, 16)
-                    .padding(.bottom, 12)
-                
-                Divider()
-                    .opacity(0.3)
-                
-                ScrollView {
-                    VStack(alignment: .leading, spacing: 20) {
-                        switch selectedTab {
-                        case .gallery:
-                            galleryContentView
-                        case .performance:
-                            performanceContentView
-                        case .displays:
-                            displaysContentView
-                        case .about:
-                            aboutContentView
+        NavigationSplitView {
+            List(selection: $selection) {
+                Section("管理与设置") {
+                    ForEach(SidebarCategory.allCases) { category in
+                        NavigationLink(value: category) {
+                            Label(category.rawValue, systemImage: category.icon)
                         }
                     }
-                    .padding(24)
                 }
             }
-            .background(Color(NSColor.windowBackgroundColor))
-        }
-        .frame(minWidth: 780, minHeight: 520)
-    }
-    
-    // MARK: - Left Sidebar
-    private var sidebarView: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            // App Identity Header
-            HStack(spacing: 12) {
-                ZStack {
-                    RoundedRectangle(cornerRadius: 10)
-                        .fill(LinearGradient(colors: [.blue, .cyan], startPoint: .topLeading, endPoint: .bottomTrailing))
-                        .frame(width: 38, height: 38)
-                    
-                    Image(systemName: "sparkles.tv.fill")
-                        .font(.system(size: 20))
-                        .foregroundColor(.white)
-                }
-                
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("壁纸大师")
-                        .font(.system(size: 15, weight: .bold))
-                        .foregroundColor(.primary)
-                    
-                    Text("Dynamic Wallpaper")
-                        .font(.system(size: 11))
-                        .foregroundColor(.secondary)
-                }
-            }
-            .padding(.horizontal, 16)
-            .padding(.top, 20)
-            .padding(.bottom, 4)
-            
-            Divider()
-                .padding(.horizontal, 12)
-                .opacity(0.4)
-            
-            // Sidebar Menu Items List
-            VStack(spacing: 4) {
-                ForEach(SidebarItem.allCases) { item in
-                    let isSelected = selectedTab == item
-                    Button {
-                        selectedTab = item
-                    } label: {
-                        HStack(spacing: 10) {
-                            ZStack {
-                                RoundedRectangle(cornerRadius: 6)
-                                    .fill(isSelected ? Color.white.opacity(0.2) : item.iconColor)
-                                    .frame(width: 22, height: 22)
-                                
-                                Image(systemName: item.iconName)
-                                    .font(.system(size: 12, weight: .bold))
-                                    .foregroundColor(.white)
-                            }
-                            
-                            Text(item.rawValue)
-                                .font(.system(size: 13, weight: isSelected ? .semibold : .regular))
-                                .foregroundColor(isSelected ? .white : .primary)
-                            
-                            Spacer()
-                        }
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 7)
-                        .background(
-                            RoundedRectangle(cornerRadius: 8)
-                                .fill(isSelected ? Color.accentColor : Color.clear)
-                        )
-                    }
-                    .buttonStyle(.plain)
-                }
-            }
-            .padding(.horizontal, 12)
-            
-            Spacer()
-            
-            // Sidebar Footer Engine Live Status Pill
-            VStack(alignment: .leading, spacing: 4) {
-                HStack(spacing: 6) {
+            .listStyle(.sidebar)
+            .navigationSplitViewColumnWidth(min: 180, ideal: 200, max: 240)
+            .safeAreaInset(edge: .bottom) {
+                // Engine Status Badge in Sidebar Footer
+                HStack(spacing: 8) {
                     Circle()
                         .fill(energySaver.isPaused ? Color.orange : Color.green)
                         .frame(width: 8, height: 8)
                     
-                    Text(energySaver.isPaused ? "引擎已休眠" : "运行中: \(energySaver.targetFPS) FPS")
-                        .font(.system(size: 12, weight: .semibold))
-                        .foregroundColor(.primary)
-                }
-                
-                Text(energySaver.pauseReason)
-                    .font(.system(size: 11))
-                    .foregroundColor(.secondary)
-                    .lineLimit(1)
-            }
-            .padding(12)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(
-                RoundedRectangle(cornerRadius: 10)
-                    .fill(Color(NSColor.controlBackgroundColor))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 10)
-                            .stroke(Color.primary.opacity(0.08), lineWidth: 1)
-                    )
-            )
-            .padding(.horizontal, 12)
-            .padding(.bottom, 16)
-        }
-    }
-    
-    // MARK: - Top Navigation Bar
-    private var topNavigationBar: some View {
-        HStack {
-            Text(selectedTab.rawValue)
-                .font(.system(size: 20, weight: .bold))
-                .foregroundColor(.primary)
-            
-            Spacer()
-            
-            Button(action: importLocalFile) {
-                HStack(spacing: 6) {
-                    Image(systemName: "plus.circle.fill")
-                    Text("导入本地视频/网页")
-                }
-                .font(.system(size: 13, weight: .medium))
-                .padding(.horizontal, 14)
-                .padding(.vertical, 7)
-                .background(
-                    RoundedRectangle(cornerRadius: 8)
-                        .fill(Color.accentColor)
-                )
-                .foregroundColor(.white)
-            }
-            .buttonStyle(.plain)
-        }
-    }
-    
-    // MARK: - Gallery View Content
-    private var galleryContentView: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            Text("选择并立即应用动态壁纸，支持视频、网页与原生特效。")
-                .font(.subheadline)
-                .foregroundColor(.secondary)
-            
-            LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 16) {
-                ForEach(presets) { item in
-                    AppleStyleWallpaperCard(
-                        item: item,
-                        isSelected: wallpaperManager.currentWallpaper.id == item.id
-                    ) {
-                        wallpaperManager.currentWallpaper = item
-                    }
-                }
-            }
-        }
-    }
-    
-    // MARK: - Performance & Energy View Content (Apple Grouped Card Style)
-    private var performanceContentView: some View {
-        VStack(alignment: .leading, spacing: 20) {
-            Text("智能调节运行开销，确保全屏游戏与看剧时 0% 显卡/处理器占用。")
-                .font(.subheadline)
-                .foregroundColor(.secondary)
-            
-            // System Settings Card Group
-            VStack(spacing: 0) {
-                ToggleRow(
-                    title: "🎮 全屏应用/游戏自动暂停 (推荐)",
-                    subtitle: "当游戏、视频或IDE全屏运行时，壁纸冻结，CPU/GPU占用降至 0%",
-                    isOn: $energySaver.pauseOnFullscreen
-                )
-                
-                Divider()
-                    .padding(.leading, 16)
-                
-                ToggleRow(
-                    title: "🔋 电池供电自动降帧 (60 ➔ 30 FPS)",
-                    subtitle: "未连接电源时，限制渲染最大帧率以延长 Mac 续航",
-                    isOn: $energySaver.lowerFPSOnBattery
-                )
-                
-                Divider()
-                    .padding(.leading, 16)
-                
-                ToggleRow(
-                    title: "🪫 低电量模式完全暂停壁纸",
-                    subtitle: "电池处于低电量模式时暂停所有壁纸渲染",
-                    isOn: $energySaver.pauseOnBattery
-                )
-                
-                Divider()
-                    .padding(.leading, 16)
-                
-                ToggleRow(
-                    title: "🔇 视频静音 (节省音频解码开销)",
-                    subtitle: "完全关闭视频音频流，降低音频采样转化开销",
-                    isOn: $wallpaperManager.isAudioMuted
-                )
-            }
-            .background(
-                RoundedRectangle(cornerRadius: 12)
-                    .fill(Color(NSColor.controlBackgroundColor))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 12)
-                            .stroke(Color.primary.opacity(0.08), lineWidth: 1)
-                    )
-            )
-        }
-    }
-    
-    // MARK: - Displays View Content
-    private var displaysContentView: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            Text("已检测到以下显示设备，壁纸引擎将自动全屏覆盖匹配。")
-                .font(.subheadline)
-                .foregroundColor(.secondary)
-            
-            VStack(spacing: 12) {
-                ForEach(NSScreen.screens, id: \.self) { screen in
-                    HStack(spacing: 14) {
-                        ZStack {
-                            RoundedRectangle(cornerRadius: 8)
-                                .fill(Color.blue.opacity(0.12))
-                                .frame(width: 42, height: 42)
-                            
-                            Image(systemName: "display")
-                                .font(.title2)
-                                .foregroundColor(.blue)
-                        }
-                        
-                        VStack(alignment: .leading, spacing: 3) {
-                            Text(screen.localizedName)
-                                .font(.system(size: 14, weight: .semibold))
-                                .foregroundColor(.primary)
-                            
-                            Text("分辨率: \(Int(screen.frame.width)) × \(Int(screen.frame.height))")
-                                .font(.caption)
-                                .foregroundColor(.secondary)
-                        }
-                        
-                        Spacer()
-                        
-                        Text("当前壁纸: \(wallpaperManager.currentWallpaper.title)")
-                            .font(.system(size: 12, weight: .medium))
-                            .padding(.horizontal, 10)
-                            .padding(.vertical, 5)
-                            .background(
-                                Capsule()
-                                    .fill(Color.primary.opacity(0.06))
-                            )
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text(energySaver.isPaused ? "引擎休眠中" : "极速运行中 (\(energySaver.targetFPS) FPS)")
+                            .font(.system(size: 11, weight: .semibold))
+                            .foregroundColor(.primary)
+                        Text(energySaver.pauseReason)
+                            .font(.system(size: 10))
                             .foregroundColor(.secondary)
+                            .lineLimit(1)
                     }
-                    .padding(14)
-                    .background(
-                        RoundedRectangle(cornerRadius: 12)
-                            .fill(Color(NSColor.controlBackgroundColor))
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 12)
-                                    .stroke(Color.primary.opacity(0.08), lineWidth: 1)
-                            )
-                    )
+                    Spacer()
+                }
+                .padding(10)
+                .background(Color(NSColor.controlBackgroundColor).opacity(0.8))
+                .cornerRadius(8)
+                .padding(12)
+            }
+        } detail: {
+            Group {
+                switch selection {
+                case .gallery:
+                    GalleryDetailView(presets: $presets)
+                case .performance:
+                    PerformanceDetailView()
+                case .displays:
+                    DisplaysDetailView()
+                case .about, .none:
+                    AboutDetailView()
+                }
+            }
+            .navigationTitle(selection?.rawValue ?? "壁纸大师")
+            .toolbar {
+                ToolbarItem(placement: .primaryAction) {
+                    Button(action: importLocalFile) {
+                        Label("导入本地文件", systemImage: "plus")
+                    }
+                    .help("支持导入 MP4/MOV 视频或 HTML 网页壁纸")
                 }
             }
         }
+        .navigationSplitViewStyle(.balanced)
     }
     
-    // MARK: - About Content
-    private var aboutContentView: some View {
-        VStack(spacing: 20) {
-            ZStack {
-                Circle()
-                    .fill(LinearGradient(colors: [.blue, .cyan], startPoint: .topLeading, endPoint: .bottomTrailing))
-                    .frame(width: 80, height: 80)
-                
-                Image(systemName: "sparkles.tv.fill")
-                    .font(.system(size: 40))
-                    .foregroundColor(.white)
-            }
-            .padding(.top, 20)
-            
-            VStack(spacing: 4) {
-                Text("Dynamic Wallpaper Studio")
-                    .font(.title2.bold())
-                    .foregroundColor(.primary)
-                
-                Text("版本 1.0.0 (Build 1)")
-                    .font(.subheadline)
-                    .foregroundColor(.secondary)
-            }
-            
-            Text("专为 macOS 设计的极简低功耗动态壁纸引擎，支持视频、网页与原生 GPU 粒子特效。")
-                .font(.body)
-                .foregroundColor(.secondary)
-                .multilineTextAlignment(.center)
-                .padding(.horizontal, 40)
-            
-            Spacer()
-        }
-        .frame(maxWidth: .infinity)
-    }
-
     private func importLocalFile() {
         let panel = NSOpenPanel()
         panel.canChooseFiles = true
@@ -409,96 +127,85 @@ public struct DashboardView: View {
     }
 }
 
-// MARK: - Apple Style Toggle Row
-struct ToggleRow: View {
-    let title: String
-    let subtitle: String
-    @Binding var isOn: Bool
+// MARK: - 1. Gallery Detail View (Ultra-fast Fixed Grid for High FPS Window Dragging)
+struct GalleryDetailView: View {
+    @Binding var presets: [WallpaperItem]
+    @ObservedObject private var wallpaperManager = WallpaperManager.shared
+    
+    // Fixed columns prevent expensive adaptive layout recalculations on window resize
+    private let columns = [
+        GridItem(.flexible(), spacing: 16),
+        GridItem(.flexible(), spacing: 16)
+    ]
     
     var body: some View {
-        HStack(spacing: 12) {
-            VStack(alignment: .leading, spacing: 3) {
-                Text(title)
-                    .font(.system(size: 13, weight: .medium))
-                    .foregroundColor(.primary)
-                
-                Text(subtitle)
-                    .font(.caption)
+        ScrollView {
+            VStack(alignment: .leading, spacing: 16) {
+                Text("选择壁纸预设以立即替换当前桌面。")
+                    .font(.subheadline)
                     .foregroundColor(.secondary)
-            }
-            
-            Spacer()
-            
-            Toggle("", isOn: $isOn)
-                .labelsHidden()
-                .toggleStyle(SwitchToggleStyle(tint: .accentColor))
-        }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 12)
-    }
-}
-
-// MARK: - Apple Style Wallpaper Card
-struct AppleStyleWallpaperCard: View {
-    let item: WallpaperItem
-    let isSelected: Bool
-    let onSelect: () -> Void
-    
-    var body: some View {
-        Button(action: onSelect) {
-            VStack(alignment: .leading, spacing: 10) {
-                ZStack {
-                    RoundedRectangle(cornerRadius: 10)
-                        .fill(cardGradient(for: item))
-                        .frame(height: 120)
-                    
-                    Image(systemName: iconName(for: item))
-                        .font(.system(size: 38))
-                        .foregroundColor(.white)
-                        .shadow(color: .black.opacity(0.3), radius: 6)
-                    
-                    if isSelected {
-                        VStack {
-                            HStack {
-                                Spacer()
+                
+                LazyVGrid(columns: columns, spacing: 16) {
+                    ForEach(presets) { item in
+                        let isSelected = wallpaperManager.currentWallpaper.id == item.id
+                        
+                        Button {
+                            wallpaperManager.currentWallpaper = item
+                        } label: {
+                            VStack(alignment: .leading, spacing: 8) {
                                 ZStack {
-                                    Circle()
-                                        .fill(Color.white)
-                                        .frame(width: 24, height: 24)
-                                    Image(systemName: "checkmark.circle.fill")
-                                        .font(.title3)
-                                        .foregroundColor(.blue)
+                                    RoundedRectangle(cornerRadius: 8)
+                                        .fill(cardGradient(for: item))
+                                        .frame(height: 110)
+                                    
+                                    Image(systemName: iconName(for: item))
+                                        .font(.system(size: 34))
+                                        .foregroundColor(.white)
+                                        .shadow(radius: 3)
+                                    
+                                    if isSelected {
+                                        VStack {
+                                            HStack {
+                                                Spacer()
+                                                Image(systemName: "checkmark.circle.fill")
+                                                    .font(.title2)
+                                                    .foregroundColor(.white)
+                                                    .shadow(radius: 2)
+                                                    .padding(8)
+                                            }
+                                            Spacer()
+                                        }
+                                    }
                                 }
-                                .padding(8)
+                                
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(item.title)
+                                        .font(.system(size: 13, weight: .bold))
+                                        .foregroundColor(.primary)
+                                    Text(item.subtitle)
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                        .lineLimit(1)
+                                }
+                                .padding(.horizontal, 4)
+                                .padding(.bottom, 4)
                             }
-                            Spacer()
+                            .padding(8)
+                            .background(
+                                RoundedRectangle(cornerRadius: 10)
+                                    .fill(isSelected ? Color.accentColor.opacity(0.1) : Color(NSColor.controlBackgroundColor))
+                            )
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 10)
+                                    .stroke(isSelected ? Color.accentColor : Color(NSColor.separatorColor), lineWidth: isSelected ? 2 : 1)
+                            )
                         }
+                        .buttonStyle(.plain)
                     }
                 }
-                
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(item.title)
-                        .font(.system(size: 14, weight: .bold))
-                        .foregroundColor(.primary)
-                    
-                    Text(item.subtitle)
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                        .lineLimit(1)
-                }
             }
-            .padding(10)
-            .background(
-                RoundedRectangle(cornerRadius: 14)
-                    .fill(Color(NSColor.controlBackgroundColor))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 14)
-                            .stroke(isSelected ? Color.blue : Color.primary.opacity(0.08), lineWidth: isSelected ? 2 : 1)
-                    )
-            )
-            .shadow(color: Color.black.opacity(isSelected ? 0.08 : 0.02), radius: 6, x: 0, y: 2)
+            .padding(20)
         }
-        .buttonStyle(.plain)
     }
     
     private func iconName(for item: WallpaperItem) -> String {
@@ -519,15 +226,136 @@ struct AppleStyleWallpaperCard: View {
     private func cardGradient(for item: WallpaperItem) -> LinearGradient {
         switch item.proceduralStyle {
         case .cosmicNebula:
-            return LinearGradient(colors: [.indigo, .purple, Color(red: 0.1, green: 0.1, blue: 0.25)], startPoint: .topLeading, endPoint: .bottomTrailing)
+            return LinearGradient(colors: [.indigo, .purple, .black], startPoint: .topLeading, endPoint: .bottomTrailing)
         case .matrixRain:
-            return LinearGradient(colors: [Color(red: 0.05, green: 0.15, blue: 0.05), Color(red: 0, green: 0.35, blue: 0.15)], startPoint: .top, endPoint: .bottom)
+            return LinearGradient(colors: [Color.black, Color(red: 0, green: 0.3, blue: 0.1)], startPoint: .top, endPoint: .bottom)
         case .cyberGrid:
             return LinearGradient(colors: [.pink, .purple, .blue], startPoint: .topLeading, endPoint: .bottomTrailing)
         case .minimalClock:
-            return LinearGradient(colors: [.blue, .cyan, Color(red: 0.1, green: 0.15, blue: 0.3)], startPoint: .top, endPoint: .bottom)
+            return LinearGradient(colors: [.blue, .cyan, .black], startPoint: .top, endPoint: .bottom)
         default:
-            return LinearGradient(colors: [.blue.opacity(0.7), .purple.opacity(0.7)], startPoint: .top, endPoint: .bottom)
+            return LinearGradient(colors: [.blue.opacity(0.8), .purple.opacity(0.8)], startPoint: .top, endPoint: .bottom)
         }
+    }
+}
+
+// MARK: - 2. Performance Detail View (Native macOS Form)
+struct PerformanceDetailView: View {
+    @ObservedObject private var energySaver = EnergySaverManager.shared
+    @ObservedObject private var wallpaperManager = WallpaperManager.shared
+    
+    var body: some View {
+        Form {
+            Section {
+                Toggle(isOn: $energySaver.pauseOnFullscreen) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("全屏应用/游戏自动暂停")
+                            .font(.system(size: 13, weight: .medium))
+                        Text("检测到全屏视频、全屏游戏或 IDE 时自动休眠，实现 0% CPU/GPU 占用")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                }
+                
+                Toggle(isOn: $energySaver.lowerFPSOnBattery) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("电池供电自动降帧 (60 ➔ 30 FPS)")
+                            .font(.system(size: 13, weight: .medium))
+                        Text("未连接电源时，限制渲染上限以延长 Mac 续航")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                }
+                
+                Toggle(isOn: $energySaver.pauseOnBattery) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("低电量模式完全暂停壁纸")
+                            .font(.system(size: 13, weight: .medium))
+                        Text("电池处于低电量状态时暂停渲染")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                }
+            } header: {
+                Text("功耗与智能休眠策略")
+            } footer: {
+                Text("开启全屏暂停可确保运行大作游戏或编辑视频时不会浪费任何 Mac 算力。")
+            }
+            
+            Section("音频与音效设置") {
+                Toggle("视频全局静音", isOn: $wallpaperManager.isAudioMuted)
+            }
+        }
+        .formStyle(.grouped)
+    }
+}
+
+// MARK: - 3. Displays Detail View
+struct DisplaysDetailView: View {
+    @ObservedObject private var wallpaperManager = WallpaperManager.shared
+    
+    var body: some View {
+        Form {
+            Section("硬件显示设备") {
+                ForEach(NSScreen.screens, id: \.self) { screen in
+                    LabeledContent {
+                        Text("已应用: \(wallpaperManager.currentWallpaper.title)")
+                            .foregroundColor(.secondary)
+                    } label: {
+                        HStack(spacing: 10) {
+                            Image(systemName: "display")
+                                .font(.title3)
+                                .foregroundColor(.accentColor)
+                            
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(screen.localizedName)
+                                    .font(.system(size: 13, weight: .semibold))
+                                Text("分辨率: \(Int(screen.frame.width)) × \(Int(screen.frame.height))")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        .formStyle(.grouped)
+    }
+}
+
+// MARK: - 4. About Detail View
+struct AboutDetailView: View {
+    var body: some View {
+        VStack(spacing: 16) {
+            Spacer()
+            
+            ZStack {
+                Circle()
+                    .fill(LinearGradient(colors: [.blue, .cyan], startPoint: .topLeading, endPoint: .bottomTrailing))
+                    .frame(width: 72, height: 72)
+                
+                Image(systemName: "sparkles.tv.fill")
+                    .font(.system(size: 36))
+                    .foregroundColor(.white)
+            }
+            
+            VStack(spacing: 4) {
+                Text("Dynamic Wallpaper Studio")
+                    .font(.title2.bold())
+                Text("版本 1.0.0 (原生 macOS 极简版)")
+                    .font(.subheadline)
+                    .foregroundColor(.secondary)
+            }
+            
+            Text("专为 macOS 设计的极简低功耗动态壁纸引擎，全面支持 0% 功耗全屏挂起、视频与原生 GPU 粒子特效。")
+                .font(.body)
+                .foregroundColor(.secondary)
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, 40)
+            
+            Spacer()
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(Color(NSColor.controlBackgroundColor))
     }
 }

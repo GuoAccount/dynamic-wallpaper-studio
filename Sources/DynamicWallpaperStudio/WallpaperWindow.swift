@@ -15,9 +15,9 @@ public final class WallpaperWindow: NSWindow {
             defer: false
         )
         
-        // Exact macOS Desktop Wallpaper Window Level (-2147483648)
-        // Binds window directly to macOS Desktop Picture Layer so left/right Space swipe animations stay 100% seamless
-        self.level = NSWindow.Level(Int(CGWindowLevelForKey(.desktopWindow)))
+        // Position exactly beneath desktop icons (-2147483641)
+        let desktopIconLevel = Int(CGWindowLevelForKey(.desktopIconWindow))
+        self.level = NSWindow.Level(desktopIconLevel - 1)
         
         // Pass all mouse events through to desktop icons and desktop right-click menu
         self.ignoresMouseEvents = true

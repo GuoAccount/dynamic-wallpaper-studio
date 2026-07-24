@@ -6,6 +6,8 @@
     <string>zh_CN</string>
     <key>CFBundleExecutable</key>
     <string>DynamicWallpaperStudio</string>
+    <key>CFBundleIconFile</key>
+    <string>AppIcon</string>
     <key>CFBundleIdentifier</key>
     <string>com.antigravity.DynamicWallpaperStudio</string>
     <key>CFBundleInfoDictionaryVersion</key>

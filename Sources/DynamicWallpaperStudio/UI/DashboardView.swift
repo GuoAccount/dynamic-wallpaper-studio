@@ -2,94 +2,127 @@ import SwiftUI
 import AppKit
 import UniformTypeIdentifiers
 
-// MARK: - Native macOS Dashboard View (NavigationSplitView + Sidebar + Form)
-public struct DashboardView: View {
-    @ObservedObject private var wallpaperManager = WallpaperManager.shared
-    @ObservedObject private var energySaver = EnergySaverManager.shared
+// MARK: - Sidebar Categories
+public enum SidebarCategory: String, CaseIterable, Identifiable {
+    case gallery = "壁纸画廊"
+    case performance = "低功耗与性能"
+    case displays = "多显示器配置"
+    case about = "关于应用"
     
-    @State private var selection: SidebarCategory? = .gallery
-    @State private var presets: [WallpaperItem] = WallpaperItem.presets
+    public var id: String { rawValue }
     
-    enum SidebarCategory: String, CaseIterable, Identifiable {
-        case gallery = "壁纸画廊"
-        case performance = "低功耗与性能"
-        case displays = "多显示器配置"
-        case about = "关于应用"
-        
-        var id: String { rawValue }
-        
-        var icon: String {
-            switch self {
-            case .gallery: return "photo.on.rectangle.angled"
-            case .performance: return "bolt.shield.fill"
-            case .displays: return "display"
-            case .about: return "info.circle.fill"
-            }
+    var icon: String {
+        switch self {
+        case .gallery: return "photo.on.rectangle.angled"
+        case .performance: return "bolt.shield.fill"
+        case .displays: return "display"
+        case .about: return "info.circle.fill"
         }
     }
+}
+
+// MARK: - Main Dashboard View (HSplitView - 60 FPS Zero-Lag Resizing)
+public struct DashboardView: View {
+    @State private var selectedCategory: SidebarCategory = .gallery
+    @State private var presets: [WallpaperItem] = WallpaperItem.presets
     
     public init() {}
 
     public var body: some View {
-        NavigationSplitView {
-            List(selection: $selection) {
-                Section("管理与设置") {
-                    ForEach(SidebarCategory.allCases) { category in
-                        NavigationLink(value: category) {
-                            Label(category.rawValue, systemImage: category.icon)
-                        }
-                    }
+        HSplitView {
+            // Left Sidebar Column
+            SidebarListView(selectedCategory: $selectedCategory)
+                .frame(minWidth: 180, idealWidth: 200, maxWidth: 240)
+            
+            // Right Detail Column
+            DetailContentView(selectedCategory: selectedCategory, presets: $presets)
+                .frame(minWidth: 500, idealWidth: 580)
+        }
+        .frame(minWidth: 720, minHeight: 460)
+    }
+}
+
+// MARK: - Sidebar List View
+struct SidebarListView: View {
+    @Binding var selectedCategory: SidebarCategory
+    @ObservedObject private var energySaver = EnergySaverManager.shared
+    
+    var body: some View {
+        VStack(spacing: 0) {
+            List(SidebarCategory.allCases, id: \.self, selection: $selectedCategory) { category in
+                HStack(spacing: 8) {
+                    Image(systemName: category.icon)
+                        .foregroundColor(selectedCategory == category ? .accentColor : .secondary)
+                    Text(category.rawValue)
+                        .font(.system(size: 13, weight: selectedCategory == category ? .semibold : .regular))
                 }
+                .padding(.vertical, 2)
+                .tag(category)
             }
             .listStyle(.sidebar)
-            .navigationSplitViewColumnWidth(min: 180, ideal: 200, max: 240)
-            .safeAreaInset(edge: .bottom) {
-                // Engine Status Badge in Sidebar Footer
-                HStack(spacing: 8) {
-                    Circle()
-                        .fill(energySaver.isPaused ? Color.orange : Color.green)
-                        .frame(width: 8, height: 8)
-                    
-                    VStack(alignment: .leading, spacing: 1) {
-                        Text(energySaver.isPaused ? "引擎休眠中" : "极速运行中 (\(energySaver.targetFPS) FPS)")
-                            .font(.system(size: 11, weight: .semibold))
-                            .foregroundColor(.primary)
-                        Text(energySaver.pauseReason)
-                            .font(.system(size: 10))
-                            .foregroundColor(.secondary)
-                            .lineLimit(1)
-                    }
-                    Spacer()
+            
+            Divider()
+            
+            // Engine Status Badge
+            HStack(spacing: 8) {
+                Circle()
+                    .fill(energySaver.isPaused ? Color.orange : Color.green)
+                    .frame(width: 8, height: 8)
+                
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(energySaver.isPaused ? "引擎休眠中" : "运行中 (\(energySaver.targetFPS) FPS)")
+                        .font(.system(size: 11, weight: .semibold))
+                    Text(energySaver.pauseReason)
+                        .font(.system(size: 10))
+                        .foregroundColor(.secondary)
+                        .lineLimit(1)
                 }
-                .padding(10)
-                .background(Color(NSColor.controlBackgroundColor).opacity(0.8))
-                .cornerRadius(8)
-                .padding(12)
+                Spacer(minLength: 0)
             }
-        } detail: {
+            .padding(10)
+            .background(Color(NSColor.controlBackgroundColor))
+        }
+    }
+}
+
+// MARK: - Detail Content Router
+struct DetailContentView: View {
+    let selectedCategory: SidebarCategory
+    @Binding var presets: [WallpaperItem]
+    
+    var body: some View {
+        VStack(spacing: 0) {
+            // Header Bar
+            HStack {
+                Text(selectedCategory.rawValue)
+                    .font(.title2.bold())
+                Spacer()
+                
+                Button(action: importLocalFile) {
+                    Label("导入本地文件", systemImage: "plus")
+                }
+            }
+            .padding(.horizontal, 20)
+            .padding(.top, 16)
+            .padding(.bottom, 12)
+            
+            Divider()
+            
+            // Selected View Content
             Group {
-                switch selection {
+                switch selectedCategory {
                 case .gallery:
                     GalleryDetailView(presets: $presets)
                 case .performance:
                     PerformanceDetailView()
                 case .displays:
                     DisplaysDetailView()
-                case .about, .none:
+                case .about:
                     AboutDetailView()
                 }
             }
-            .navigationTitle(selection?.rawValue ?? "壁纸大师")
-            .toolbar {
-                ToolbarItem(placement: .primaryAction) {
-                    Button(action: importLocalFile) {
-                        Label("导入本地文件", systemImage: "plus")
-                    }
-                    .help("支持导入 MP4/MOV 视频或 HTML 网页壁纸")
-                }
-            }
         }
-        .navigationSplitViewStyle(.balanced)
+        .background(Color(NSColor.windowBackgroundColor))
     }
     
     private func importLocalFile() {
@@ -122,17 +155,16 @@ public struct DashboardView: View {
                 )
             }
             presets.insert(newItem, at: 0)
-            wallpaperManager.currentWallpaper = newItem
+            WallpaperManager.shared.currentWallpaper = newItem
         }
     }
 }
 
-// MARK: - 1. Gallery Detail View (Ultra-fast Fixed Grid for High FPS Window Dragging)
+// MARK: - 1. Gallery Detail View
 struct GalleryDetailView: View {
     @Binding var presets: [WallpaperItem]
     @ObservedObject private var wallpaperManager = WallpaperManager.shared
     
-    // Fixed columns prevent expensive adaptive layout recalculations on window resize
     private let columns = [
         GridItem(.flexible(), spacing: 16),
         GridItem(.flexible(), spacing: 16)
@@ -141,7 +173,7 @@ struct GalleryDetailView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
-                Text("选择壁纸预设以立即替换当前桌面。")
+                Text("点击壁纸卡片以立即切换当前桌面背景。")
                     .font(.subheadline)
                     .foregroundColor(.secondary)
                 
@@ -155,13 +187,12 @@ struct GalleryDetailView: View {
                             VStack(alignment: .leading, spacing: 8) {
                                 ZStack {
                                     RoundedRectangle(cornerRadius: 8)
-                                        .fill(cardGradient(for: item))
+                                        .fill(cardColor(for: item))
                                         .frame(height: 110)
                                     
                                     Image(systemName: iconName(for: item))
-                                        .font(.system(size: 34))
+                                        .font(.system(size: 32))
                                         .foregroundColor(.white)
-                                        .shadow(radius: 3)
                                     
                                     if isSelected {
                                         VStack {
@@ -170,7 +201,6 @@ struct GalleryDetailView: View {
                                                 Image(systemName: "checkmark.circle.fill")
                                                     .font(.title2)
                                                     .foregroundColor(.white)
-                                                    .shadow(radius: 2)
                                                     .padding(8)
                                             }
                                             Spacer()
@@ -188,12 +218,11 @@ struct GalleryDetailView: View {
                                         .lineLimit(1)
                                 }
                                 .padding(.horizontal, 4)
-                                .padding(.bottom, 4)
                             }
                             .padding(8)
                             .background(
                                 RoundedRectangle(cornerRadius: 10)
-                                    .fill(isSelected ? Color.accentColor.opacity(0.1) : Color(NSColor.controlBackgroundColor))
+                                    .fill(isSelected ? Color.accentColor.opacity(0.12) : Color(NSColor.controlBackgroundColor))
                             )
                             .overlay(
                                 RoundedRectangle(cornerRadius: 10)
@@ -223,30 +252,25 @@ struct GalleryDetailView: View {
         }
     }
     
-    private func cardGradient(for item: WallpaperItem) -> LinearGradient {
+    private func cardColor(for item: WallpaperItem) -> Color {
         switch item.proceduralStyle {
-        case .cosmicNebula:
-            return LinearGradient(colors: [.indigo, .purple, .black], startPoint: .topLeading, endPoint: .bottomTrailing)
-        case .matrixRain:
-            return LinearGradient(colors: [Color.black, Color(red: 0, green: 0.3, blue: 0.1)], startPoint: .top, endPoint: .bottom)
-        case .cyberGrid:
-            return LinearGradient(colors: [.pink, .purple, .blue], startPoint: .topLeading, endPoint: .bottomTrailing)
-        case .minimalClock:
-            return LinearGradient(colors: [.blue, .cyan, .black], startPoint: .top, endPoint: .bottom)
-        default:
-            return LinearGradient(colors: [.blue.opacity(0.8), .purple.opacity(0.8)], startPoint: .top, endPoint: .bottom)
+        case .cosmicNebula: return .purple
+        case .matrixRain: return Color(red: 0, green: 0.35, blue: 0.1)
+        case .cyberGrid: return .indigo
+        case .minimalClock: return .blue
+        default: return .cyan
         }
     }
 }
 
-// MARK: - 2. Performance Detail View (Native macOS Form)
+// MARK: - 2. Performance Detail View
 struct PerformanceDetailView: View {
     @ObservedObject private var energySaver = EnergySaverManager.shared
     @ObservedObject private var wallpaperManager = WallpaperManager.shared
     
     var body: some View {
         Form {
-            Section {
+            Section("功耗与智能休眠策略") {
                 Toggle(isOn: $energySaver.pauseOnFullscreen) {
                     VStack(alignment: .leading, spacing: 2) {
                         Text("全屏应用/游戏自动暂停")
@@ -276,10 +300,6 @@ struct PerformanceDetailView: View {
                             .foregroundColor(.secondary)
                     }
                 }
-            } header: {
-                Text("功耗与智能休眠策略")
-            } footer: {
-                Text("开启全屏暂停可确保运行大作游戏或编辑视频时不会浪费任何 Mac 算力。")
             }
             
             Section("音频与音效设置") {
